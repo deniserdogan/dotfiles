@@ -1,0 +1,5 @@
+{
+  "coc-eslint|global": {
+    "eslintAlwaysAllowExecution": true
+  }
+}
