@@ -10,6 +10,8 @@ I use Neovim's builtin LSP setting up language servers and features such as:
 - Show/go to references/go to implementation
 - Snippets
 
+[packer.nvim](https://github.com/wbthomason/packer.nvim) for plugin/package management
+
 For listing features above I use [telescope.nvim](https://github.com/nvim-telescope/telescope.nvim)
 
 For file explorer [NvimTree](https://github.com/kyazdani42/nvim-tree.lua)
@@ -22,6 +24,22 @@ Using specific servers for formatters, linters, errors, and code actions [null-l
 **and more..**
 
 > ⚠️ Check keymaps.lua and dannzi.lua to see all shortcuts
+
+# Setup
+
+Before you install anything don't forget to backup your old config!
+
+```console
+mv ~/.config/nvim ~/.config/nvimbackup
+```
+
+Clone repo to `~/.config/nvim/` folder
+
+```console
+git clone https://github.com/deniserdogan/dotfiles ~/.config/nvim
+nvim +PackerSync
+```
+
 
 # Some Features & Screenshots
 
