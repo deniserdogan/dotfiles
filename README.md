@@ -18,12 +18,22 @@ For file explorer [NvimTree](https://github.com/kyazdani42/nvim-tree.lua)
 
 Colorscheme is [nordfox.nvim](https://github.com/EdenEast/nightfox.nvim) with some customization
 
-To install language sarvers [LspInstall](https://github.com/kabouzeid/nvim-lspinstall)
+To install language sarvers [LspInstall](https://github.com/kabouzeid/nvim-lspinstall) 
 
 Using specific servers for formatters, linters, errors, and code actions [null-ls.nvim](https://github.com/jose-elias-alvarez/null-ls.nvim)
 **and more..**
 
 > ⚠️ Check keymaps.lua and dannzi.lua to see all shortcuts
+
+### Languages with settings and ready to use:
+
+- Javascript/Typescript (React)
+
+- Python
+
+- Go
+
+- Lua
 
 # Setup
 
