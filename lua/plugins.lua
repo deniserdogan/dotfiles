@@ -4,16 +4,15 @@ return require("packer").startup(function(use)
 	use("wbthomason/packer.nvim")
 
 	-----------------------------------------------------------
-	-- ПЛАГИНЫ ВНЕШНЕГО ВИДА
-	-----------------------------------------------------------
-	-- Цветовая схема
+	-- Styling plugins
+	----------------------------------------------------------
+	-- Colorscheme (Nordfox)
 	use("EdenEast/nightfox.nvim")
-	use("joshdick/onedark.vim")
 
 	-----------------------------------------------------------
-	-- НАВИГАЦИЯ
+	-- Navigation
 	-----------------------------------------------------------
-	-- Файловый менеджер
+	-- File Manager
 	use({
 		"kyazdani42/nvim-tree.lua",
 		requires = "kyazdani42/nvim-web-devicons",
@@ -27,9 +26,9 @@ return require("packer").startup(function(use)
 			})
 		end,
 	})
-	-- Навигация внутри файла по классам и функциям
+	-- Tagbar Ctags
 	use("majutsushi/tagbar")
-	-- Замена fzf и ack
+	-- Fuzzy finder
 	use({
 		"nvim-telescope/telescope.nvim",
 		requires = { { "nvim-lua/plenary.nvim" } },
@@ -39,14 +38,14 @@ return require("packer").startup(function(use)
 	})
 
 	-----------------------------------------------------------
-	-- LSP и автодополнялка
+	-- LSP and Autocomplete
 	-----------------------------------------------------------
 	-- Highlight, edit, and navigate code using a fast incremental parsing library
 	use("nvim-treesitter/nvim-treesitter")
 	-- Collection of configurations for built-in LSP client
 	use("neovim/nvim-lspconfig")
 	use("williamboman/nvim-lsp-installer")
-	-- Автодополнялка
+	-- Autocomplete
 	use("hrsh7th/nvim-cmp")
 	use("hrsh7th/cmp-nvim-lsp")
 	use("hrsh7th/cmp-buffer")
@@ -61,10 +60,6 @@ return require("packer").startup(function(use)
 	-----------------------------------------------------------
 	-- HTML и CSS
 	-----------------------------------------------------------
-	-- Подсвечивает закрывающий и откры. тэг. Если, где-то что-то не закрыто, то не подсвечивает.
-	use("idanarye/breeze.vim")
-	-- Закрывает автоматом html и xml тэги. Пишешь <h1> и он автоматом закроется </h1>
-	use("alvan/vim-closetag")
 	-- Подсвечивает #ffffff
 	use("ap/vim-css-color")
 	-- JS/TS/JSX Syntax
@@ -80,8 +75,6 @@ return require("packer").startup(function(use)
 	-----------------------------------------------------------
 	-- РАЗНОЕ
 	-----------------------------------------------------------
-	-- 'Автоформатирование' кода для всех языков
-	use("nvim-lua/popup.nvim")
 
 	-- Обрамляет или снимает обрамление. Выдели слово, нажми S и набери <h1>
 	use("tpope/vim-surround")
@@ -90,12 +83,12 @@ return require("packer").startup(function(use)
 	use("mhinz/vim-startify")
 
 	-- Комментирует по gc все, вне зависимости от языка программирования
-	use({
-		"numToStr/Comment.nvim",
-		config = function()
-			require("Comment").setup()
-		end,
-	})
+	use("b3nj5m1n/kommentary")
+
+	-- Js/JSX snippets
+	use("rafamadriz/friendly-snippets")
+
+	use("JoosepAlviste/nvim-ts-context-commentstring")
 
 	-- Обрамляет строку в теги по ctrl- y + ,
 	use("mattn/emmet-vim")

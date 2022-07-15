@@ -18,9 +18,6 @@ opt.undofile = true -- Возможность отката назад
 opt.splitright = true -- vertical split вправо
 opt.splitbelow = true -- horizontal split вниз
 opt.clipboard = "unnamed"
--- opt.list = true
--- opt.listchars["eol"] = "↲"
--- hey
 
 -- colors
 opt.termguicolors = true --  24-bit RGB colors
@@ -39,12 +36,13 @@ cmd([[au BufEnter * set fo-=c fo-=r fo-=o]])
 cmd([[autocmd FileType text,markdown,html,xhtml,javascript setlocal cc=0]])
 -- 2 spaces for selected filetypes
 cmd([[
-autocmd FileType html setlocal tabstop=2 shiftwidth=2 softtabstop=blinkon250
+autocmd FileType html setlocal tabstop=2 shiftwidth=2 softtabstop=2
 autocmd FileType css setlocal tabstop=2 shiftwidth=2 softtabstop=2
 autocmd FileType javascriptreact setlocal tabstop=2 shiftwidth=2 softtabstop=2
 autocmd FileType javascript setlocal tabstop=2 shiftwidth=2 softtabstop=2
 autocmd FileType lua setlocal tabstop=2 shiftwidth=2 softtabstop=2
 ]])
+
 
 -- Golang highlight
 g["go_highlight_types"] = 1
