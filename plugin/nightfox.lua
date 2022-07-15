@@ -17,11 +17,9 @@ require("nightfox").setup({
 	},
 })
 
--- setup must be called before loading
-
--- set colorscheme
 vim.cmd("colorscheme nordfox")
 
 -- set changes *(set it after colorscheme)
 vim.cmd("highlight CursorLine guibg=none")
 vim.cmd("highlight EndOfBuffer guifg=#14191e guibg=bg")
+

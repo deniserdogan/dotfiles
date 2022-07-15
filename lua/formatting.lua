@@ -7,7 +7,6 @@ local action = null_ls.builtins.code_actions
 null_ls.setup({
 	sources = {
 		-- formatters
-
 		formatting.gofmt,
 		formatting.goimports,
 		formatting.prettier,
