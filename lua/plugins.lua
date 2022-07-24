@@ -6,8 +6,10 @@ return require("packer").startup(function(use)
 	-----------------------------------------------------------
 	-- Styling plugins
 	----------------------------------------------------------
+
 	-- Colorscheme (Nordfox)
 	use("EdenEast/nightfox.nvim")
+	use("folke/tokyonight.nvim")
 
 	-----------------------------------------------------------
 	-- Navigation

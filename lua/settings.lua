@@ -10,14 +10,16 @@ opt.guicursor = "i-ci-ve:block,i:blinkwait100-blinkoff400-blinkon250-Cursor/lCur
 opt.colorcolumn = "80" -- Разделитель на 80 символов
 opt.cursorline = true -- Подсветка строки с курсором
 opt.number = true -- Включаем нумерацию строк
-opt.relativenumber = false -- Вкл. относительную нумерацию строк
+opt.relativenumber = true -- Вкл. относительную нумерацию строк
 opt.scrolloff = 9
+opt.mouse = 'a'
 
--- opt.laststatus = 0
+-- opt.laststatus = 2
 opt.undofile = true -- Возможность отката назад
 opt.splitright = true -- vertical split вправо
 opt.splitbelow = true -- horizontal split вниз
 opt.clipboard = "unnamed"
+opt.wrap = false
 
 -- colors
 opt.termguicolors = true --  24-bit RGB colors
@@ -25,8 +27,7 @@ opt.termguicolors = true --  24-bit RGB colors
 -- tabs
 cmd([[
 filetype indent plugin on
-syntax enable
-]])
+syntax enable ]])
 opt.expandtab = true -- use spaces instead of tabs
 opt.shiftwidth = 4 -- shift 4 spaces when tab
 opt.tabstop = 4 -- 1 tab == 4 spaces
@@ -42,7 +43,6 @@ autocmd FileType javascriptreact setlocal tabstop=2 shiftwidth=2 softtabstop=2
 autocmd FileType javascript setlocal tabstop=2 shiftwidth=2 softtabstop=2
 autocmd FileType lua setlocal tabstop=2 shiftwidth=2 softtabstop=2
 ]])
-
 
 -- Golang highlight
 g["go_highlight_types"] = 1

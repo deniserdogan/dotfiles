@@ -17,9 +17,18 @@ require("nightfox").setup({
 	},
 })
 
+--[[ vim.g.tokyonight_style = "night"
+vim.g.tokyonight_italic_comments = true
+vim.g.tokyonight_italic_keywords = true
+vim.g.tokyonight_transparent = true
+vim.g.tokyonight_transparent_sidebar = true
+vim.g.tokyonight_italic_functions = true
+vim.g.tokyonight_sidebars = { "qf", "vista_kind", "terminal", "packer" }
+ ]]
+
 vim.cmd("colorscheme nordfox")
 
--- set changes *(set it after colorscheme)
+-- set changes after colorscheme decleration
 vim.cmd("highlight CursorLine guibg=none")
 vim.cmd("highlight EndOfBuffer guifg=#14191e guibg=bg")
-
+vim.cmd("highlight LineNr guifg=#544d4c")
