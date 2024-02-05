@@ -4,10 +4,11 @@ return {
 		require("lualine").setup({
 			options = {
 				theme = "auto",
-        tabline = {},
-        winbar = {},
-        inactive_winbar = {},
-        extensions = {},
+				disabled_filetypes = { "alpha", "neo-tree" },
+				tabline = {},
+				winbar = {},
+				inactive_winbar = {},
+				extensions = {},
 			},
 		})
 	end,
