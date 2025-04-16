@@ -14,7 +14,6 @@ return {
 			vim.cmd("colorscheme kanagawa")
 		end,
 	},
-    aslkdklasdlkaskldas
     
 	-- {
 	-- 	"ramojus/mellifluous.nvim",
