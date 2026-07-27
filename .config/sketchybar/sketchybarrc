@@ -1,0 +1,304 @@
+#!/usr/bin/env sh
+
+PLUGIN_DIR="$CONFIG_DIR/plugins"
+
+# On a cold start, initialize from macOS itself. Live theme switches pass a
+# pending target through colors.sh and do not restart this process.
+user_id="${UID:-501}"
+pending_file="/tmp/sketchybar_theme_pending_$user_id"
+if [ -z "${THEME_MODE:-}" ] && [ ! -r "$pending_file" ]; then
+  if [ "$(/usr/bin/defaults read -g AppleInterfaceStyle 2>/dev/null)" = "Dark" ]; then
+    THEME_MODE=dark
+  else
+    THEME_MODE=light
+  fi
+  export THEME_MODE
+fi
+
+. "$CONFIG_DIR/colors.sh"
+
+TEXT_FONT="SF Pro Rounded"
+ICON_FONT="JetBrainsMono Nerd Font"
+APP_FONT="sketchybar-app-font"
+
+# Floating, translucent shell with native macOS typography.
+sketchybar --bar \
+  position=top \
+  display=all \
+  height=38 \
+  margin=8 \
+  y_offset=5 \
+  corner_radius=14 \
+  color="$BAR_COLOR" \
+  border_color="$BAR_BORDER" \
+  border_width=1 \
+  blur_radius=28 \
+  shadow=on \
+  font_smoothing=on \
+  padding_left=7 \
+  padding_right=7
+
+sketchybar --default \
+  updates=when_shown \
+  icon.font="$ICON_FONT:Semibold:13.0" \
+  icon.color="$TEXT" \
+  label.font="$TEXT_FONT:Semibold:12.0" \
+  label.color="$TEXT" \
+  background.color="$ITEM_BG" \
+  background.border_color="$ITEM_BORDER" \
+  background.border_width=1 \
+  background.corner_radius=10 \
+  background.height=28 \
+  padding_left=3 \
+  padding_right=3 \
+  icon.padding_left=8 \
+  icon.padding_right=5 \
+  label.padding_left=0 \
+  label.padding_right=9
+
+# Restore stable slot labels before generating display-aware Space pills.
+/bin/sh $HOME/.config/yabai/scripts/sync_space_roles.sh
+
+# Left cluster: launcher, rich spaces, and the focused application.
+sketchybar --add item apple left \
+  --set apple \
+    icon="" \
+    icon.font="$ICON_FONT:Semibold:15.0" \
+    icon.color="$MAUVE" \
+    label.drawing=off \
+    background.color="$ITEM_BG_STRONG" \
+    popup.align=left \
+    popup.height=30 \
+    popup.y_offset=6 \
+    popup.blur_radius=32 \
+    popup.background.color="$BAR_COLOR" \
+    popup.background.border_color="$BAR_BORDER" \
+    popup.background.border_width=1 \
+    popup.background.corner_radius=14 \
+    popup.background.shadow.drawing=on \
+    click_script="$PLUGIN_DIR/control_center.sh"
+
+# A compact, unified control center. It refreshes only when opened.
+sketchybar --add item cc.header popup.apple \
+  --set cc.header \
+    icon="󰒓" \
+    icon.color="$MAUVE" \
+    label="Control Center" \
+    label.font="$TEXT_FONT:Bold:13.0" \
+    background.color="$ITEM_BG_STRONG" \
+    background.corner_radius=10 \
+    click_script='open -a "System Settings"'
+
+sketchybar --add item cc.cpu popup.apple \
+  --set cc.cpu icon="󰍛" icon.color="$GREEN" label="CPU  --" \
+    click_script='open -a "Activity Monitor"'
+
+sketchybar --add item cc.memory popup.apple \
+  --set cc.memory icon="󰘚" icon.color="$YELLOW" label="Memory  --" \
+    click_script='open -a "Activity Monitor"'
+
+sketchybar --add item cc.disk popup.apple \
+  --set cc.disk icon="󰋊" icon.color="$PEACH" label="Disk  --"
+
+sketchybar --add item cc.display popup.apple \
+  --set cc.display icon="󰍹" icon.color="$BLUE" label="Displays  --" \
+    click_script='open "x-apple.systempreferences:com.apple.Displays-Settings.extension"'
+
+sketchybar --add item cc.network popup.apple \
+  --set cc.network icon="󰖩" icon.color="$TEAL" label="Network  --" \
+    click_script='open "x-apple.systempreferences:com.apple.wifi-settings-extension"'
+
+sketchybar --add item cc.vpn popup.apple \
+  --set cc.vpn \
+    icon=":amnezia_vpn:" \
+    icon.font="$APP_FONT:Regular:15.0" \
+    icon.color="$BLUE" \
+    label="AmneziaVPN  --" \
+    click_script='open -a "AmneziaVPN"'
+
+sketchybar --add item cc.battery popup.apple \
+  --set cc.battery icon="󰂄" icon.color="$GREEN" label="Battery  --"
+
+sketchybar --add item cc.volume_label popup.apple \
+  --set cc.volume_label \
+    icon="󰕾" \
+    icon.color="$BLUE" \
+    label="Volume" \
+    background.color=0x00000000 \
+    background.border_width=0
+
+sketchybar --add slider cc.volume popup.apple 190 \
+  --set cc.volume \
+    slider.percentage=50 \
+    slider.highlight_color="$BLUE" \
+    slider.background.height=7 \
+    slider.background.corner_radius=4 \
+    slider.background.color="$ITEM_BG_STRONG" \
+    slider.knob="●" \
+    slider.knob.drawing=on \
+    slider.knob.color="$TEXT" \
+    background.color=0x00000000 \
+    background.border_width=0 \
+    script="$PLUGIN_DIR/volume_slider.sh" \
+  --subscribe cc.volume mouse.clicked
+
+space_rows="$(
+  yabai -m query --spaces 2>/dev/null |
+    jq -r '
+      .[]
+      | select(."is-native-fullscreen" == false)
+      | [.index, .label]
+      | @tsv
+    '
+)"
+
+while IFS="$(printf '\t')" read -r space_index space_role; do
+  [ -n "$space_index" ] || continue
+  slot="${space_role#slot.}"
+  case "$space_role" in
+    slot.[0-9]*) ;;
+    *) slot="$space_index" ;;
+  esac
+
+  sketchybar --add space "space.$space_index" left \
+    --set "space.$space_index" \
+      space="$space_index" \
+      icon="$slot" \
+      icon.font="$TEXT_FONT:Bold:12.0" \
+      label="" \
+      label.drawing=off \
+      label.font="$APP_FONT:Regular:14.0" \
+      label.max_chars=15 \
+      label.color="$SUBTEXT" \
+      background.color="$ITEM_BG" \
+      script="$PLUGIN_DIR/space.sh" \
+      click_script="$HOME/.config/yabai/scripts/focus_space.sh $slot"
+done <<EOF
+$space_rows
+EOF
+
+# One observer updates only the space whose windows changed.
+sketchybar --add item space_observer left \
+  --set space_observer \
+    drawing=off \
+    updates=on \
+    script="$PLUGIN_DIR/space_windows.sh" \
+  --subscribe space_observer space_windows_change
+
+sketchybar --add event yabai_stack_changed
+sketchybar --add item stack_observer left \
+  --set stack_observer \
+    drawing=off \
+    updates=on \
+    update_freq=8 \
+    script="$PLUGIN_DIR/stack_status.sh" \
+  --subscribe stack_observer yabai_stack_changed system_woke
+
+# Rebuild the palette and notify running Neovim instances whenever macOS
+# changes appearance, including changes made outside our keyboard shortcut.
+sketchybar --add event system_theme_changed AppleInterfaceThemeChangedNotification
+sketchybar --add item theme_observer left \
+  --set theme_observer \
+    drawing=off \
+    updates=on \
+    script="$PLUGIN_DIR/theme_changed.sh" \
+  --subscribe theme_observer system_theme_changed
+
+sketchybar --add item front_app left \
+  --set front_app \
+    icon=":finder:" \
+    icon.font="$APP_FONT:Regular:15.0" \
+    label="Desktop" \
+    label.max_chars=26 \
+    label.color="$SUBTEXT" \
+    background.color="$ITEM_BG_STRONG" \
+    script="$PLUGIN_DIR/front_app.sh" \
+  --subscribe front_app front_app_switched
+
+# The media island disappears completely when macOS has no active media.
+sketchybar --add item media center \
+  --set media \
+    drawing=off \
+    icon="󰎆" \
+    icon.color="$MAUVE" \
+    label="Nothing playing" \
+    label.font="$TEXT_FONT:Semibold:11.0" \
+    label.max_chars=42 \
+    scroll_texts=on \
+    background.color="$ITEM_BG_STRONG" \
+    background.border_color="$MAUVE" \
+    update_freq=3 \
+    updates=on \
+    script="$PLUGIN_DIR/media.sh" \
+    click_script="$PLUGIN_DIR/media_click.sh"
+
+# Right cluster: lightweight live system telemetry.
+sketchybar --add graph cpu right 64 \
+  --set cpu \
+    icon="󰍛" \
+    icon.color="$GREEN" \
+    label="--%" \
+    label.font="$TEXT_FONT:Medium:11.0" \
+    graph.color="$GREEN" \
+    graph.fill_color="$GREEN_FILL" \
+    graph.line_width=1.5 \
+    update_freq=4 \
+    updates=on \
+    script="$PLUGIN_DIR/cpu.sh" \
+    click_script='open -a "Activity Monitor"'
+
+sketchybar --add item memory right \
+  --set memory \
+    icon="󰘚" \
+    icon.color="$YELLOW" \
+    label="--%" \
+    label.font="$TEXT_FONT:Medium:11.0" \
+    update_freq=12 \
+    updates=on \
+    script="$PLUGIN_DIR/memory.sh" \
+    click_script='open -a "Activity Monitor"'
+
+sketchybar --add item network right \
+  --set network \
+    icon="󰖩" \
+    icon.color="$TEAL" \
+    label="↓ --  ↑ --" \
+    label.font="$ICON_FONT:Medium:10.0" \
+    update_freq=4 \
+    updates=on \
+    script="$PLUGIN_DIR/network.sh" \
+  --subscribe network wifi_change system_woke
+
+sketchybar --add item volume right \
+  --set volume \
+    icon="󰕾" \
+    icon.color="$BLUE" \
+    label="--%" \
+    label.font="$TEXT_FONT:Medium:11.0" \
+    updates=on \
+    script="$PLUGIN_DIR/volume.sh" \
+    click_script="$PLUGIN_DIR/volume_click.sh" \
+  --subscribe volume volume_change system_woke
+
+sketchybar --add item battery right \
+  --set battery \
+    icon.color="$GREEN" \
+    label.font="$TEXT_FONT:Medium:11.0" \
+    update_freq=45 \
+    updates=on \
+    script="$PLUGIN_DIR/battery.sh" \
+  --subscribe battery power_source_change system_woke
+
+sketchybar --add item clock right \
+  --set clock \
+    icon="󰃭" \
+    icon.color="$MAUVE" \
+    label.font="$TEXT_FONT:Semibold:12.0" \
+    background.color="$ITEM_BG_STRONG" \
+    update_freq=10 \
+    updates=on \
+    script="$PLUGIN_DIR/clock.sh" \
+    click_script='open -a "Calendar"'
+
+sketchybar --hotload true
+sketchybar --update

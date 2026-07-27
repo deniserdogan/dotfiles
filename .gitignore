@@ -1,0 +1,14 @@
+.DS_Store
+
+# Machine-local state
+.config/yabai/space_roles.tsv
+.config/yabai/yabai.sudoers
+.config/github-copilot/
+.config/nvim.backup-*/
+.config/nvim.log
+nvim.log
+
+# Editor and shell noise
+*.swp
+*.swo
+*~

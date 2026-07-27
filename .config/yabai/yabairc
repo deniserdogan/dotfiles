@@ -1,0 +1,76 @@
+#!/usr/bin/env sh
+
+# Advanced space operations require Yabai's scripting addition. The sudoers
+# rule is pinned to the installed binary's SHA-256 digest.
+yabai -m signal --add \
+  label=load_scripting_addition \
+  event=dock_did_restart \
+  action="sudo /opt/homebrew/bin/yabai --load-sa"
+sudo -n /opt/homebrew/bin/yabai --load-sa >/dev/null 2>&1
+
+# Restore semantic Space labels before hotkeys or bars query them.
+/bin/sh $HOME/.config/yabai/scripts/sync_space_roles.sh
+
+# Display and Space topology changes are debounced into one SketchyBar rebuild.
+yabai -m signal --add \
+  label=semantic_display_added \
+  event=display_added \
+  action="$HOME/.config/yabai/scripts/space_topology_changed.sh"
+yabai -m signal --add \
+  label=semantic_display_removed \
+  event=display_removed \
+  action="$HOME/.config/yabai/scripts/space_topology_changed.sh"
+yabai -m signal --add \
+  label=semantic_display_moved \
+  event=display_moved \
+  action="$HOME/.config/yabai/scripts/space_topology_changed.sh"
+yabai -m signal --add \
+  label=semantic_display_resized \
+  event=display_resized \
+  action="$HOME/.config/yabai/scripts/space_topology_changed.sh"
+yabai -m signal --add \
+  label=semantic_space_created \
+  event=space_created \
+  action="$HOME/.config/yabai/scripts/space_topology_changed.sh"
+yabai -m signal --add \
+  label=semantic_space_destroyed \
+  event=space_destroyed \
+  action="$HOME/.config/yabai/scripts/space_topology_changed.sh"
+
+# Layout
+yabai -m config layout bsp
+yabai -m config window_placement second_child
+yabai -m config split_ratio 0.50
+yabai -m config auto_balance off
+
+# Space reserved for the floating SketchyBar, with a compact gap below it
+yabai -m config external_bar all:46:0
+
+# KDE-ish compact spacing
+yabai -m config top_padding 4
+yabai -m config bottom_padding 8
+yabai -m config left_padding 8
+yabai -m config right_padding 8
+yabai -m config window_gap 8
+
+# Mouse
+yabai -m config focus_follows_mouse autofocus
+yabai -m config mouse_follows_focus off
+yabai -m config mouse_modifier alt
+yabai -m config mouse_action1 move
+yabai -m config mouse_action2 resize
+
+# Float system utility windows
+yabai -m rule --add app="System Settings" manage=off
+yabai -m rule --add app="Calculator" manage=off
+yabai -m rule --add app="Archive Utility" manage=off
+yabai -m rule --add app="Disk Utility" manage=off
+yabai -m rule --add app="Finder" title="(Copy|Move|Connect|Info)" manage=off
+yabai -m rule --add title="Picture in Picture" manage=off
+
+# Rounded Catppuccin borders
+borders \
+  style=round \
+  width=5.0 \
+  active_color="glow(0xff89b4fa)" \
+  inactive_color=0xff45475a &

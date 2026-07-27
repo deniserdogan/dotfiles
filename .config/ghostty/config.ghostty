@@ -1,0 +1,18 @@
+theme = dark:Nordfox,light:Xcode Light
+
+font-family = JetBrainsMono Nerd Font
+font-size = 17
+
+window-decoration = auto
+macos-titlebar-style = hidden
+macos-window-shadow = false
+
+window-padding-x = 10
+window-padding-y = 8
+
+macos-option-as-alt = right
+
+cursor-style = block
+cursor-style-blink = false
+
+background-opacity = 1.0
