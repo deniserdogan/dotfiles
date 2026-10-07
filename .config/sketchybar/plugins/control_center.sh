@@ -2,39 +2,76 @@
 
 . "$CONFIG_DIR/colors.sh"
 
-host_stats="$(hostinfo 2>/dev/null)"
-load="$(printf '%s' "$host_stats" | awk '/Load average:/ { gsub(",", "", $3); print $3; exit }')"
-cores="$(printf '%s' "$host_stats" | awk '/processors are logically available/ { print $1; exit }')"
-cpu="--"
-if [ -n "$load" ] && [ -n "$cores" ]; then
-  cpu="$(awk -v load="$load" -v cores="$cores" 'BEGIN {
-    value = load / cores * 100
-    if (value > 100) value = 100
-    printf "%.0f%%", value
-  }')"
+popup_clear="$(printf '%s' "$BAR_COLOR" | sed 's/^0x../0x00/')"
+
+close_popup() {
+  sketchybar --animate sin 5 \
+    --set apple \
+      popup.y_offset=2 \
+      popup.background.color="$popup_clear" \
+      background.border_color="$ITEM_BORDER" \
+    --set "/cc\\..*/" \
+      icon.y_offset=0 \
+      label.y_offset=0
+
+  /bin/sleep 0.09
+
+  sketchybar \
+    --set apple \
+      popup.drawing=off \
+      popup.y_offset=7 \
+      popup.background.color="$BAR_COLOR" \
+    --set "/cc\\..*/" \
+      icon.y_offset=0 \
+      label.y_offset=0
+}
+
+if [ "${1:-}" = "close" ]; then
+  close_popup
+  exit 0
 fi
 
-free="$(memory_pressure -Q 2>/dev/null | awk '/System-wide memory free percentage/ { gsub("%", "", $5); print $5 }')"
-memory="--"
-case "$free" in
-  ''|*[!0-9]*) ;;
-  *) memory="$((100 - free))%" ;;
-esac
+popup_state="$(
+  sketchybar --query apple 2>/dev/null |
+    jq -r '.popup.drawing // "off"' 2>/dev/null
+)"
+if [ "$popup_state" = "on" ]; then
+  close_popup
+  exit 0
+fi
 
-disk="$(df -H / 2>/dev/null | awk 'NR == 2 { print $5 " used · " $4 " free" }')"
-[ -n "$disk" ] || disk="--"
+# Open immediately with the last known contents; refresh telemetry afterward.
+# Keep text baselines fixed rather than moving every row independently.
+sketchybar --set apple popup.y_offset=3 \
+  popup.background.color="$popup_clear" popup.drawing=on
+sketchybar --animate sin 6 --set apple popup.y_offset=7 \
+  popup.background.color="$BAR_COLOR" background.border_color="$MAUVE"
+
+computer_name="$(scutil --get ComputerName 2>/dev/null)"
+[ -n "$computer_name" ] || computer_name="$(hostname -s 2>/dev/null)"
+[ -n "$computer_name" ] || computer_name="This Mac"
+
+os_version="$(sw_vers -productVersion 2>/dev/null)"
+[ -n "$os_version" ] || os_version="--"
+
+booted="$(who -b 2>/dev/null | awk '{ print $3 " " $4 " · " $5; exit }')"
+if [ -n "$booted" ]; then
+  system="macOS $os_version · Booted $booted"
+else
+  system="macOS $os_version"
+fi
+
+disk_row="$(df -H / 2>/dev/null | awk 'NR == 2 { print $2 "\t" $4; exit }')"
+disk_total="$(printf '%s' "$disk_row" | awk -F '\t' '{ print $1 }')"
+disk_free="$(printf '%s' "$disk_row" | awk -F '\t' '{ print $2 }')"
+if [ -n "$disk_total" ] && [ -n "$disk_free" ]; then
+  storage="$disk_free free of $disk_total"
+else
+  storage="Unavailable"
+fi
 
 display_info="$(yabai -m query --displays 2>/dev/null)"
 display_count="$(printf '%s' "$display_info" | jq -r 'length // 0' 2>/dev/null)"
-active_display="$(
-  printf '%s' "$display_info" |
-    jq -r '
-      map(select(."has-focus" == true))[0]
-      | if . == null then empty
-        else .index
-        end
-    ' 2>/dev/null
-)"
 active_resolution="$(
   printf '%s' "$display_info" |
     jq -r '
@@ -44,23 +81,22 @@ active_resolution="$(
         end
     ' 2>/dev/null
 )"
-if [ -n "$active_resolution" ]; then
-  display="Display $active_display/$display_count · $active_resolution"
-else
-  display="$display_count connected"
-fi
+case "$display_count" in
+  1) display="$active_resolution · 1 display" ;;
+  ''|0) display="Unavailable" ;;
+  *) display="$active_resolution · $display_count displays" ;;
+esac
 
-interface="$(netstat -rn -f inet 2>/dev/null | awk '$1 == "default" { print $NF; exit }')"
-ip=""
-[ -n "$interface" ] && ip="$(ipconfig getifaddr "$interface" 2>/dev/null)"
-if [ -n "$ip" ]; then
-  network="$interface · $ip"
-else
-  network="Offline"
-fi
-
-vpn_interface="$(netstat -rn -f inet 2>/dev/null | awk '$1 == "0/1" && $NF ~ /^utun/ { print $NF; exit }')"
-if [ -n "$vpn_interface" ] && netstat -rn -f inet 2>/dev/null | awk -v iface="$vpn_interface" '$1 == "128.0/1" && $NF == iface { found=1 } END { exit !found }'; then
+vpn_interface="$(
+  netstat -rn -f inet 2>/dev/null |
+    awk '$1 == "0/1" && $NF ~ /^utun/ { print $NF; exit }'
+)"
+if [ -n "$vpn_interface" ] &&
+  netstat -rn -f inet 2>/dev/null |
+    awk -v iface="$vpn_interface" '
+      $1 == "128.0/1" && $NF == iface { found=1 }
+      END { exit !found }
+    '; then
   vpn="Connected · $vpn_interface"
   vpn_color="$GREEN"
 else
@@ -68,25 +104,17 @@ else
   vpn_color="$MUTED"
 fi
 
-battery_raw="$(system_profiler SPPowerDataType 2>/dev/null)"
-health="$(printf '%s' "$battery_raw" | awk -F': ' '/Condition:/ { print $2; exit }')"
-capacity="$(printf '%s' "$battery_raw" | awk -F': ' '/Maximum Capacity:/ { print $2; exit }')"
-cycles="$(printf '%s' "$battery_raw" | awk -F': ' '/Cycle Count:/ { print $2; exit }')"
-battery="${capacity:---}"
-[ -n "$health" ] && battery="$battery · $health"
-[ -n "$cycles" ] && battery="$battery · $cycles cycles"
+if [ "$THEME_MODE" = "dark" ]; then
+  appearance="Switch to Light Appearance"
+else
+  appearance="Switch to Dark Appearance"
+fi
 
-volume="$(osascript -e 'output volume of (get volume settings)' 2>/dev/null)"
-case "$volume" in
-  ''|*[!0-9]*) volume=0 ;;
-esac
-
-sketchybar --set cc.cpu label="CPU  $cpu" \
-  --set cc.memory label="Memory  $memory" \
-  --set cc.disk label="Disk  $disk" \
-  --set cc.display label="Displays  $display" \
-  --set cc.network label="Network  $network" \
+# Refresh the open panel without restarting its entrance animation.
+sketchybar \
+  --set cc.header label="$computer_name" \
+  --set cc.system label="$system" \
+  --set cc.storage label="$storage" \
+  --set cc.display label="$display" \
   --set cc.vpn label="AmneziaVPN  $vpn" icon.color="$vpn_color" \
-  --set cc.battery label="Battery  $battery" \
-  --set cc.volume slider.percentage="$volume" \
-  --set apple popup.drawing=toggle
+  --set cc.appearance label="$appearance"

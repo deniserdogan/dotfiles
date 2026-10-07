@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 
 requested_theme="${THEME_MODE:-}"
-user_id="${UID:-501}"
+user_id="${UID:-$(/usr/bin/id -u)}"
 pending_file="/tmp/sketchybar_theme_pending_$user_id"
 state_file="/tmp/sketchybar_theme_mode_$user_id"
 

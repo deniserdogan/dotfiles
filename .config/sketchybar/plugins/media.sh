@@ -31,6 +31,6 @@ if awk -v rate="$rate" 'BEGIN { exit !(rate > 0) }'; then
   color="$GREEN"
 fi
 
-sketchybar --animate tanh 12 \
+sketchybar --animate sin 6 \
   --set "$NAME" drawing=on icon="$icon" icon.color="$color" \
     background.border_color="$color" label="$label"

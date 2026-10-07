@@ -7,22 +7,22 @@ percentage="$(printf '%s' "$status" | grep -Eo '[0-9]+%' | head -1 | tr -d '%')"
 [ -n "$percentage" ] || exit 0
 
 if printf '%s' "$status" | grep -q 'AC Power'; then
-  icon="󰂄"
+  icon=""
   color="$GREEN"
 elif [ "$percentage" -ge 80 ]; then
-  icon="󰁹"
+  icon=""
   color="$GREEN"
 elif [ "$percentage" -ge 60 ]; then
-  icon="󰂀"
+  icon=""
   color="$TEAL"
 elif [ "$percentage" -ge 40 ]; then
-  icon="󰁾"
+  icon=""
   color="$YELLOW"
 elif [ "$percentage" -ge 20 ]; then
-  icon="󰁼"
+  icon=""
   color="$PEACH"
 else
-  icon="󰁺"
+  icon=""
   color="$RED"
 fi
 

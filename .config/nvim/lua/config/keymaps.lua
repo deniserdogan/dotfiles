@@ -164,7 +164,7 @@ function M.setup()
     vim.diagnostic.setloclist({ open = true })
   end, "Buffer diagnostics")
   map("n", "<leader>td", diagnostic.toggle, "Toggle diagnostics")
-  map("n", "<leader>tv", diagnostic.toggle_virtual_lines, "Toggle diagnostic virtual lines")
+  map("n", "<leader>tv", diagnostic.toggle_virtual_text, "Toggle diagnostic inline text")
   map("n", "<leader>uD", diagnostic.toggle_signs, "Toggle diagnostic signs")
 
   map("n", "]q", function()

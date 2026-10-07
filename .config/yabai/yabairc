@@ -1,41 +1,41 @@
 #!/usr/bin/env sh
 
-# Advanced space operations require Yabai's scripting addition. The sudoers
-# rule is pinned to the installed binary's SHA-256 digest.
+# Advanced space operations require Yabai's scripting addition. The loader
+# uses the official macOS 26.6 fix once installed, with a hash-pinned sudo rule.
 yabai -m signal --add \
   label=load_scripting_addition \
   event=dock_did_restart \
-  action="sudo /opt/homebrew/bin/yabai --load-sa"
-sudo -n /opt/homebrew/bin/yabai --load-sa >/dev/null 2>&1
+  action="/bin/sh \"$HOME/.config/yabai/scripts/reload_scripting_addition.sh\""
+/bin/sh "$HOME/.config/yabai/scripts/reload_scripting_addition.sh" >/dev/null 2>&1
 
 # Restore semantic Space labels before hotkeys or bars query them.
-/bin/sh $HOME/.config/yabai/scripts/sync_space_roles.sh
+/bin/sh "$HOME/.config/yabai/scripts/sync_space_roles.sh"
 
-# Display and Space topology changes are debounced into one SketchyBar rebuild.
+# Display and Space topology changes share a non-blocking native refresh.
 yabai -m signal --add \
   label=semantic_display_added \
   event=display_added \
-  action="$HOME/.config/yabai/scripts/space_topology_changed.sh"
+  action="\"$HOME/.config/yabai/scripts/space_topology_changed.sh\""
 yabai -m signal --add \
   label=semantic_display_removed \
   event=display_removed \
-  action="$HOME/.config/yabai/scripts/space_topology_changed.sh"
+  action="\"$HOME/.config/yabai/scripts/space_topology_changed.sh\""
 yabai -m signal --add \
   label=semantic_display_moved \
   event=display_moved \
-  action="$HOME/.config/yabai/scripts/space_topology_changed.sh"
+  action="\"$HOME/.config/yabai/scripts/space_topology_changed.sh\""
 yabai -m signal --add \
   label=semantic_display_resized \
   event=display_resized \
-  action="$HOME/.config/yabai/scripts/space_topology_changed.sh"
+  action="\"$HOME/.config/yabai/scripts/space_topology_changed.sh\""
 yabai -m signal --add \
   label=semantic_space_created \
   event=space_created \
-  action="$HOME/.config/yabai/scripts/space_topology_changed.sh"
+  action="\"$HOME/.config/yabai/scripts/space_topology_changed.sh\""
 yabai -m signal --add \
   label=semantic_space_destroyed \
   event=space_destroyed \
-  action="$HOME/.config/yabai/scripts/space_topology_changed.sh"
+  action="\"$HOME/.config/yabai/scripts/space_topology_changed.sh\""
 
 # Layout
 yabai -m config layout bsp
@@ -65,12 +65,14 @@ yabai -m rule --add app="System Settings" manage=off
 yabai -m rule --add app="Calculator" manage=off
 yabai -m rule --add app="Archive Utility" manage=off
 yabai -m rule --add app="Disk Utility" manage=off
+yabai -m rule --add label=float_amnezia_vpn app="AmneziaVPN" manage=off
 yabai -m rule --add app="Finder" title="(Copy|Move|Connect|Info)" manage=off
 yabai -m rule --add title="Picture in Picture" manage=off
 
-# Rounded Catppuccin borders
+# Crisp rounded Catppuccin borders
 borders \
   style=round \
-  width=5.0 \
-  active_color="glow(0xff89b4fa)" \
-  inactive_color=0xff45475a &
+  width=1.0 \
+  hidpi=on \
+  active_color=0xff89b4fa \
+  inactive_color=0x00000000 &

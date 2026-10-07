@@ -185,6 +185,7 @@ local server_configs = {
           autoImportCompletions = true,
           autoSearchPaths = true,
           diagnosticMode = "openFilesOnly",
+          typeCheckingMode = "basic",
           diagnosticSeverityOverrides = {
             reportUnusedImport = "none",
           },

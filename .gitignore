@@ -3,6 +3,14 @@
 # Machine-local state
 .config/yabai/space_roles.tsv
 .config/yabai/yabai.sudoers
+.config/yabai/native-fix/yabai
+.config/yabai/native-fix/*.sudoers
+.config/yabai/scripts/install_native_fix.sh
+.config/ghostty/theme-mode
+.config/sketchybar/helpers/native_motion
+.config/sketchybar/helpers/space_controller
+__pycache__/
+*.pyc
 .config/github-copilot/
 .config/nvim.backup-*/
 .config/nvim.log

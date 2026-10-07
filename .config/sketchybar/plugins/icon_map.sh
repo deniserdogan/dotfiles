@@ -1,5 +1,10 @@
 #!/usr/bin/env sh
 
+# All app logos use monochrome font outlines, including Incy.
+if [ "${2:-}" = "--image" ]; then
+  exit 0
+fi
+
 # Branded ligatures from sketchybar-app-font.
 case "$1" in
   "Activity Monitor") printf ":activity_monitor:" ;;
@@ -19,6 +24,7 @@ case "$1" in
   "Firefox"|"Firefox Developer Edition") printf ":firefox:" ;;
   "Google Chrome"|"Google Chrome Canary"|"Chromium") printf ":google_chrome:" ;;
   "Ghostty") printf ":ghostty:" ;;
+  "INCY"|"Incy"|"incy") printf '\356\244\200' ;;
   "iTerm2") printf ":iterm:" ;;
   "kitty") printf ":kitty:" ;;
   "Mail"|"Microsoft Outlook") printf ":mail:" ;;
@@ -29,16 +35,17 @@ case "$1" in
   "Neovim") printf ":neovim:" ;;
   "Notion") printf ":notion:" ;;
   "Obsidian") printf ":obsidian:" ;;
+  "Podcasts"|"Apple Podcasts"|"Подкасты"|"Подкасти"|"播客") printf ":podcasts:" ;;
   "Preview") printf ":preview:" ;;
   "Safari"|"Safari Technology Preview") printf ":safari:" ;;
   "Signal") printf ":signal:" ;;
   "Slack") printf ":slack:" ;;
   "Spotify") printf ":spotify:" ;;
-  "System Settings"|"System Preferences") printf "󰒓" ;;
+  "System Settings"|"System Preferences") printf ":gear:" ;;
   "Telegram") printf ":telegram:" ;;
   "Terminal"|"WezTerm") printf ":terminal:" ;;
   "Xcode") printf ":xcode:" ;;
   "Zed") printf ":zed:" ;;
   "zoom.us"|"zoom.us.app") printf ":zoom:" ;;
-  *) printf "󰘔" ;;
+  *) /bin/sh "$(dirname "$0")/../fonts/app_glyphs.sh" "$1" ;;
 esac

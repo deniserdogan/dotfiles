@@ -9,7 +9,13 @@ local signs = {
   },
 }
 
-local virtual_lines = { current_line = true }
+local virtual_text = {
+  current_line = true,
+  prefix = "●",
+  source = "if_many",
+  spacing = 2,
+  virt_text_pos = "eol",
+}
 local diagnostics_enabled = true
 
 function M.setup()
@@ -25,8 +31,8 @@ function M.setup()
     signs = signs,
     underline = true,
     update_in_insert = false,
-    virtual_lines = virtual_lines,
-    virtual_text = false,
+    virtual_lines = false,
+    virtual_text = virtual_text,
   })
 end
 
@@ -60,10 +66,10 @@ function M.toggle()
   vim.notify("Diagnostics " .. (diagnostics_enabled and "enabled" or "disabled"))
 end
 
-function M.toggle_virtual_lines()
-  local enabled = vim.diagnostic.config().virtual_lines ~= false
-  vim.diagnostic.config({ virtual_lines = enabled and false or virtual_lines })
-  vim.notify("Diagnostic virtual lines " .. (enabled and "disabled" or "enabled"))
+function M.toggle_virtual_text()
+  local enabled = vim.diagnostic.config().virtual_text ~= false
+  vim.diagnostic.config({ virtual_text = enabled and false or virtual_text })
+  vim.notify("Diagnostic inline text " .. (enabled and "disabled" or "enabled"))
 end
 
 function M.toggle_signs()

@@ -2,7 +2,7 @@
 
 # Recolor the live bar in place. Reloading here would recursively fire this
 # appearance event, so every visible property is updated directly instead.
-user_id="${UID:-501}"
+user_id="${UID:-$(/usr/bin/id -u)}"
 PENDING_FILE="/tmp/sketchybar_theme_pending_$user_id"
 if [ -z "${THEME_MODE:-}" ] && [ -r "$PENDING_FILE" ]; then
   pending_theme="$(/bin/cat "$PENDING_FILE")"
@@ -37,6 +37,15 @@ printf "%s\n" "$THEME_MODE" >"$STATE_FILE"
 SKETCHYBAR=/opt/homebrew/bin/sketchybar
 YABAI=/opt/homebrew/bin/yabai
 JQ=/opt/homebrew/bin/jq
+GHOSTTY_THEME_FILE="$HOME/.config/ghostty/theme-mode"
+
+if [ "$THEME_MODE" = "dark" ]; then
+  GHOSTTY_THEME=Nordfox
+else
+  GHOSTTY_THEME="Xcode Light"
+fi
+/usr/bin/printf 'theme = %s\n' "$GHOSTTY_THEME" >"$GHOSTTY_THEME_FILE"
+/usr/bin/pkill -USR2 -x ghostty >/dev/null 2>&1 || true
 
 "$SKETCHYBAR" --default \
   icon.color="$TEXT" \
@@ -64,21 +73,28 @@ set -- \
   --set cc.header \
     icon.color="$MAUVE" \
     background.color="$ITEM_BG_STRONG" \
-  --set cc.cpu icon.color="$GREEN" \
-  --set cc.memory icon.color="$YELLOW" \
-  --set cc.disk icon.color="$PEACH" \
-  --set cc.display icon.color="$BLUE" \
-  --set cc.network icon.color="$TEAL" \
-  --set cc.vpn icon.color="$BLUE" \
-  --set cc.battery icon.color="$GREEN" \
-  --set cc.volume_label \
+  --set cc.system \
     icon.color="$BLUE" \
-    background.color=0x00000000 \
-  --set cc.volume \
-    slider.highlight_color="$BLUE" \
-    slider.background.color="$ITEM_BG_STRONG" \
-    slider.knob.color="$TEXT" \
-    background.color=0x00000000 \
+    label.color="$SUBTEXT" \
+  --set cc.storage \
+    icon.color="$PEACH" \
+    label.color="$SUBTEXT" \
+  --set cc.display \
+    icon.color="$TEAL" \
+    label.color="$SUBTEXT" \
+  --set cc.vpn icon.color="$BLUE" \
+  --set cc.actions_label \
+    label.color="$MUTED" \
+    background.drawing=off \
+  --set cc.settings \
+    icon.color="$MAUVE" \
+    background.color="$ITEM_BG_STRONG" \
+  --set cc.appearance \
+    icon.color="$BLUE" \
+    background.color="$ITEM_BG_STRONG" \
+  --set cc.sleep \
+    icon.color="$YELLOW" \
+    background.color="$ITEM_BG_STRONG" \
   --set front_app \
     icon.color="$TEXT" \
     label.color="$SUBTEXT" \
@@ -126,7 +142,7 @@ set -- \
 # adding it to the same animation batch as the rest of the bar.
 space_rows="$(
   "$YABAI" -m query --spaces 2>/dev/null |
-    "$JQ" -r '.[] | [.index, ."is-visible"] | @tsv' 2>/dev/null
+    "$JQ" -r '.[] | select(."is-native-fullscreen" == false) | [.id, ."is-visible"] | @tsv' 2>/dev/null
 )"
 while IFS="$(printf '\t')" read -r index visible; do
   [ -n "$index" ] || continue
@@ -150,6 +166,7 @@ $space_rows
 EOF
 
 "$SKETCHYBAR" "$@"
+/bin/sh "$CONFIG_DIR/plugins/native_palette.sh"
 
 if [ "${SKIP_NVIM_SYNC:-0}" != "1" ]; then
   # Running Neovim instances listen for SIGUSR1 and select the matching theme.

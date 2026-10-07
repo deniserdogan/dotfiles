@@ -183,4 +183,33 @@ return {
     dependencies = { "neovim-treesitter/nvim-treesitter" },
     config = setup_textobjects,
   },
+  {
+    "nvim-treesitter/nvim-treesitter-context",
+    lazy = false,
+    dependencies = { "neovim-treesitter/nvim-treesitter" },
+    opts = {
+      enable = true,
+      line_numbers = true,
+      max_lines = 4,
+      min_window_height = 15,
+      mode = "cursor",
+      multiline_threshold = 4,
+      multiwindow = true,
+      separator = "─",
+      trim_scope = "outer",
+      zindex = 20,
+    },
+    config = function(_, opts)
+      require("treesitter-context").setup(opts)
+
+      for _, group in ipairs({ "TreesitterContext", "TreesitterContextLineNumber" }) do
+        local highlight = vim.api.nvim_get_hl(0, { name = group, link = false })
+        highlight.bg = nil
+        vim.api.nvim_set_hl(0, group, highlight)
+      end
+    end,
+    keys = {
+      { "<leader>tc", "<cmd>TSContext toggle<cr>", desc = "Toggle sticky code context" },
+    },
+  },
 }

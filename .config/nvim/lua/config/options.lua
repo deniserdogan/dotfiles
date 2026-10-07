@@ -15,7 +15,7 @@ local options = {
     foldsep = " ",
   },
   foldenable = true,
-  foldcolumn = "1",
+  foldcolumn = "0",
   foldlevel = 99,
   foldlevelstart = 99,
   ignorecase = true,

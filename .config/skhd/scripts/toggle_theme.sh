@@ -5,8 +5,6 @@ request_lock="/tmp/theme_request_$user_id"
 worker_lock="/tmp/theme_worker_$user_id"
 worker_pid_file="/tmp/theme_worker_$user_id.pid"
 desired_file="/tmp/theme_desired_$user_id"
-pending_file="/tmp/sketchybar_theme_pending_$user_id"
-state_file="/tmp/sketchybar_theme_mode_$user_id"
 
 current_system_theme() {
   if [ "$(/usr/bin/defaults read -g AppleInterfaceStyle 2>/dev/null)" = "Dark" ]; then
@@ -34,7 +32,6 @@ cleanup_worker() {
   /opt/homebrew/bin/sketchybar \
     --bar hidden=off y_offset=5 >/dev/null 2>&1 || true
   /bin/rm -f \
-    "$pending_file" \
     "$worker_pid_file" \
     "$desired_file"
   /bin/rmdir "$request_lock" 2>/dev/null || true
@@ -82,10 +79,10 @@ release_request_lock
 trap cleanup_worker EXIT INT TERM HUP
 
 while :; do
-  # Trailing-edge debounce: wait until presses have been quiet for 180 ms.
+  # Briefly coalesce repeated presses without delaying a normal key press.
   target_theme="$(/bin/cat "$desired_file" 2>/dev/null)"
   [ "$target_theme" = "dark" ] || target_theme=light
-  /bin/sleep 0.18
+  /bin/sleep 0.06
 
   acquire_request_lock || continue
   latest_theme="$(/bin/cat "$desired_file" 2>/dev/null)"
@@ -103,31 +100,16 @@ while :; do
       dark_mode=false
     fi
 
-    /usr/bin/printf '%s\n' "$target_theme" >"$pending_file"
-    /usr/bin/printf '%s\n' "$target_theme" >"$state_file"
-
-    # Preserve the native-looking window appearance without restarting the
-    # service. Prepare the complete palette just above the screen first, then
-    # start macOS and the bar entrance together so neither visibly lags behind.
-    /opt/homebrew/bin/sketchybar --bar hidden=on y_offset=-32
-    /opt/homebrew/bin/sketchybar --bar hidden=off
-    CONFIG_DIR=$HOME/.config/sketchybar \
-      FORCE_THEME_UPDATE=1 \
-      SKIP_NVIM_SYNC=1 \
-      THEME_MODE="$target_theme" \
-      $HOME/.config/sketchybar/plugins/theme_changed.sh
-
+    # Match System Settings: change only the macOS appearance and let
+    # AppleInterfaceThemeChangedNotification update SketchyBar, Ghostty, and
+    # Neovim in their normal event order.
     /usr/bin/osascript \
-      -e "tell application \"System Events\" to tell appearance preferences to set dark mode to $dark_mode" &
-    appearance_pid=$!
+      -e "tell application \"System Events\" to tell appearance preferences to set dark mode to $dark_mode"
 
-    /opt/homebrew/bin/sketchybar \
-      --animate tanh 16 \
-      --bar y_offset=5
-
-    wait "$appearance_pid" 2>/dev/null || true
-    /bin/rm -f "$pending_file"
-    /usr/bin/pkill -USR1 -x nvim >/dev/null 2>&1 || true
+    # Keep the decorative drop separate from the native app transition.
+    /bin/sleep 0.32
+    /opt/homebrew/bin/sketchybar --bar y_offset=-38
+    /opt/homebrew/bin/sketchybar --animate sin 10 --bar y_offset=5
   fi
 
   # If intent changed during the completed transition, settle the latest value
@@ -139,7 +121,6 @@ while :; do
     /bin/rmdir "$worker_lock" 2>/dev/null || true
     release_request_lock
     trap - EXIT INT TERM HUP
-    /bin/rm -f "$pending_file"
     exit 0
   fi
   release_request_lock

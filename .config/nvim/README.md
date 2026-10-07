@@ -102,8 +102,8 @@ which keeps monorepos usable. Python selection checks `$VIRTUAL_ENV`, `.venv`,
 - Set `vim.b.project_root` to an absolute path for a one-buffer root override.
 - Put `typeCheckingMode = "strict"` in `basedpyrightconfig.json`, or set
   `typeCheckingMode = "strict"` under `[tool.basedpyright]` in `pyproject.toml`,
-  to opt a Python project into strict analysis. The server otherwise keeps
-  Basedpyright's standard default.
+  to opt a Python project into strict analysis. The editor default is `basic`,
+  matching Pyright's quieter VS Code-style baseline.
 - Biome wins when `biome.json`, `biome.jsonc`, or its package dependency exists.
   Otherwise the nearest Prettier configuration/package is used. Prettier is not
   run inside a Biome-managed project.
@@ -133,6 +133,7 @@ The leader hierarchy is: `b` buffers, `c` code/LSP, `d` debugger, `f` find,
 | `Y` | normal | Yank to end of line |
 | `n` / `N` | normal | Next/previous search result, open folds, center |
 | `<C-d>` / `<C-u>` | normal | Half-page down/up and center |
+| `<leader>tc` | normal | Toggle sticky function/class context |
 | `<` / `>` | visual | Indent and keep the selection |
 | `J` / `K` | visual | Move selected lines down/up |
 | `p` | visual | Paste without replacing the unnamed register |
@@ -196,7 +197,7 @@ These LSP mappings are buffer-local and appear after `LspAttach`.
 | `<leader>cd` | Diagnostic under cursor |
 | `<leader>cD` | Put current-buffer diagnostics in the location list |
 | `<leader>td` | Toggle diagnostics globally |
-| `<leader>tv` | Toggle current-line diagnostic virtual lines |
+| `<leader>tv` | Toggle current-line diagnostic inline text |
 | `<leader>uD` | Toggle diagnostic signs |
 | `]q` / `[q` | Next / previous quickfix item, wrapping |
 | `]l` / `[l` | Next / previous location-list item, wrapping |
@@ -206,8 +207,8 @@ These LSP mappings are buffer-local and appear after `LspAttach`.
 
 Diagnostic jumps center the destination without changing mode and then show a
 source-labelled float. Diagnostics are severity-sorted, underlined, signposted,
-and not updated while typing. Regular virtual text is off; current-line virtual
-lines are on and can be toggled.
+and not updated while typing. Extra virtual lines are off; the current line's
+diagnostic appears at its end and can be toggled.
 
 Sources are intentionally non-overlapping: Basedpyright supplies Python type
 analysis while Ruff LSP supplies Ruff diagnostics/actions; gopls supplies

@@ -4,7 +4,7 @@ My keyboard-first macOS setup: Yabai BSP tiling, skhd hotkeys, a floating
 SketchyBar, JankyBorders, Ghostty, and a modular Neovim IDE. The entire desktop
 switches between Nordfox dark and Xcode Light with one shortcut.
 
-> Tested on Apple Silicon with macOS Tahoe 26.5, Yabai 7.1, SketchyBar 2.24,
+> Tested on Apple Silicon with macOS Tahoe 26.5/26.6, Yabai 7.1, SketchyBar 2.24,
 > skhd 0.3.9, JankyBorders 1.9, Ghostty 1.3, and Neovim 0.12. The scripts use
 > `/opt/homebrew`, so Intel Mac users should replace it with `/usr/local`.
 
@@ -21,14 +21,18 @@ switches between Nordfox dark and Xcode Light with one shortcut.
 | [Yabai](https://github.com/asmvik/yabai) | BSP tiling, Spaces, displays, stacking | `.config/yabai/yabairc` |
 | [skhd](https://github.com/asmvik/skhd) | Global keyboard shortcuts | `.config/skhd/skhdrc` |
 | [SketchyBar](https://github.com/FelixKratz/SketchyBar) | Spaces, app, media, CPU, RAM, network, audio, battery, clock | `.config/sketchybar/sketchybarrc` |
-| [JankyBorders](https://github.com/FelixKratz/JankyBorders) | Rounded focused-window glow | `.config/borders/bordersrc` |
+| [JankyBorders](https://github.com/FelixKratz/JankyBorders) | Crisp rounded focused-window border | `.config/borders/bordersrc` |
 | [Ghostty](https://github.com/ghostty-org/ghostty) | Fast terminal with synchronized themes | `.config/ghostty/config.ghostty` |
 | [Neovim](https://neovim.io/) | LSP, completion, formatting, linting, tests, DAP, Git, tasks, sessions | `.config/nvim/` |
 
 The SketchyBar is intentionally useful, not decorative:
 
 - semantic numbered Spaces that keep their number when moved between displays;
-- application icons for every Space and a stack-size indicator;
+- vector application icons, a compact desktop icon for empty Spaces, and a
+  stack-size indicator;
+- native hover feedback in both themes, without shell processes or layout jumps;
+- atomic desktop-strip updates using stable native IDs, so deleting a middle
+  desktop does not briefly scramble its number and app icons;
 - a clickable Apple control center with system, display, network, VPN, battery,
   and volume details;
 - currently playing media with click-to-play/pause;
@@ -55,20 +59,29 @@ The Brewfile installs the desktop tools, Ghostty, Neovim, `jq`,
 `nowplaying-cli`, common picker tools, and JetBrainsMono Nerd Font. Neovim
 installs its language-specific editor tooling through Mason on first launch.
 
-SketchyBar uses the
-[sketchybar-app-font](https://github.com/kvndrsslr/sketchybar-app-font) for
-application ligatures. Download the latest `sketchybar-app-font.ttf` release
-asset into `~/Library/Fonts/`, then log out and back in if macOS does not notice
-the font immediately.
+SketchyBar uses the bundled **Rice App Icons** font, derived from
+[sketchybar-app-font](https://github.com/kvndrsslr/sketchybar-app-font) with an
+additional Incy outline. Install it, then log out and back in if macOS does not
+notice the font immediately:
 
 ```sh
 mkdir -p ~/Library/Fonts
-font_url="$(
-  curl -fsSL https://api.github.com/repos/kvndrsslr/sketchybar-app-font/releases/latest |
-    jq -r '.assets[] | select(.name == "sketchybar-app-font.ttf") | .browser_download_url'
-)"
-curl -fL "$font_url" -o ~/Library/Fonts/sketchybar-app-font.ttf
+cp .config/sketchybar/fonts/rice-app-icons.ttf ~/Library/Fonts/
 ```
+
+The bar and Space shortcuts require two small native helpers. Install Apple's
+Command Line Tools if needed (`xcode-select --install`), then build them in the
+checkout before starting services:
+
+```sh
+sh .config/sketchybar/helpers/build.sh
+python3 .config/sketchybar/helpers/tests/space_controller_test.py
+```
+
+The tests use fixtures and never create, delete, or move real desktops. Helper
+binaries are built locally and ignored by Git. See the
+[native helper notes](.config/sketchybar/helpers/README.md) and
+[font notes](.config/sketchybar/fonts/README.md) for implementation and rebuilding.
 
 ### 2. Configure macOS
 
@@ -133,6 +146,11 @@ echo "$(whoami) ALL=(root) NOPASSWD: sha256:$(shasum -a 256 "$(which yabai)" | c
 Regenerate that rule every time Yabai is upgraded. The repository deliberately
 does not ship a `yabai.sudoers` file because another user's username, binary
 path, and hash would be wrong.
+
+For the historical macOS 26.6 compatibility workaround, see
+[the native scripting-addition note](.config/yabai/native-fix/README.md).
+The loader hook falls back to the Homebrew binary when no side-by-side loader
+is installed. Machine-specific installers and patched binaries are not shipped.
 
 ### 5. Start everything
 
@@ -207,8 +225,8 @@ SketchyBar rebuilds the Space pills after topology changes.
 
 | Shortcut | Action |
 | --- | --- |
-| `Cmd 1` … `Cmd 9` | Focus semantic Space 1 … 9 |
-| `Shift Cmd 1` … `Shift Cmd 9` | Move the focused window to semantic Space 1 … 9 |
+| `Cmd 1` … `Cmd 9` | Focus Space 1 … 9; create missing desktops up to that number |
+| `Shift Cmd 1` … `Shift Cmd 9` | Move the focused window to Space 1 … 9, creating missing desktops |
 | `Shift Alt N` | Create a Space on the focused display |
 | `Shift Alt Backspace` | Destroy the focused Space |
 
@@ -216,6 +234,15 @@ The first run creates `.config/yabai/space_roles.tsv`. It maps stable Space
 identities to `slot.N` labels and is intentionally ignored by Git because it is
 machine state. When a Space moves to another display, `Cmd N` still follows the
 role instead of its temporary Mission Control index.
+
+With four desktops, `Cmd 7` creates 5, 6 and 7 on the focused display and focuses
+7 once the native burst is complete. Press the current desktop's shortcut again
+to return to the previous desktop. Deletion switches directly to a neighboring
+desktop on the same display. The last desktop on a display is protected.
+
+Creation is explicit: event callbacks and stale bar clicks never create
+desktops. One non-blocking lock prevents overlapping operations from queuing
+and unexpectedly running later; the active operation commits the final strip.
 
 ### Reload and theme
 
@@ -323,7 +350,7 @@ These mappings appear for buffers with an attached LSP server.
 | `<leader>cd` | Diagnostic under the cursor |
 | `<leader>cD` | Current-buffer diagnostics in the location list |
 | `<leader>td` | Toggle diagnostics globally |
-| `<leader>tv` | Toggle current-line diagnostic virtual lines |
+| `<leader>tv` | Toggle current-line inline diagnostic text |
 | `<leader>uD` | Toggle diagnostic signs |
 | `]q` / `[q` | Next / previous quickfix item, wrapping |
 | `]l` / `[l` | Next / previous location-list item, wrapping |
@@ -407,6 +434,7 @@ are scoped to the project root and Git branch.
 | `]t` / `[t` | normal | Next / previous TODO comment |
 | `<leader>st` / `<leader>sT` | normal | All TODOs / TODO-FIX-FIXME picker |
 | `<leader>un` | normal | Notification history |
+| `<leader>tc` | normal | Toggle sticky function/class context at the top |
 | `<leader>?` | normal | Buffer-local which-key view |
 
 Blink completion never preselects or auto-inserts an item:
@@ -470,7 +498,9 @@ On non-US keyboard layouts, the `0x21`, `0x1E`, and `0x33` keycodes for `[`,
 
 ### Bar applications
 
-- Add application ligatures in `.config/sketchybar/plugins/icon_map.sh`.
+- Add application overrides in `.config/sketchybar/plugins/icon_map.sh`.
+  The generated lookup covers the bundled font's app aliases and unknown apps
+  keep a generic icon rather than an empty slot.
 - Remove or replace the AmneziaVPN popup row if you use another VPN.
 - Remove the media item if you do not want `nowplaying-cli`.
 - System telemetry uses standard macOS tools and does not send data anywhere.
@@ -491,7 +521,8 @@ lists across plugins.
 | Space move/create fails | Scripting addition, partial SIP setup, and current sudoers hash |
 | Bar is missing | Run `sketchybar` in a terminal and inspect the first script error |
 | Space numbers are stale | Run `~/.config/yabai/scripts/sync_space_roles.sh` and `sketchybar --reload` |
-| App icons are boxes | Install JetBrainsMono Nerd Font and sketchybar-app-font, then log out/in |
+| App icons are boxes | Install JetBrainsMono Nerd Font and bundled Rice App Icons, then log out/in |
+| Space shortcuts report a missing helper | Run `sh ~/.config/sketchybar/helpers/build.sh` |
 | Media island never appears | Install `nowplaying-cli` and start playing supported system media |
 | Theme is out of sync | Press `Ctrl Alt Cmd T` once, wait a second, then reload SketchyBar |
 | Neovim tool is missing | Run `:ConfigHealth`, `:MasonToolsInstall`, and `:checkhealth` |
@@ -520,8 +551,10 @@ tail -f /tmp/skhd_$USER.err.log
 └── README.md
 ```
 
-Machine-only files—OAuth data, logs, backups, Yabai Space UUID state, and the
-sudoers hash—are intentionally excluded.
+Machine-only files—OAuth data, logs, backups, Yabai Space UUID state, the Ghostty
+theme override, native helper binaries and sudoers hashes—are intentionally
+excluded. The bundled icon font is included so normal installation needs no
+font-building dependencies.
 
 ## Acknowledgements
 
@@ -532,4 +565,7 @@ Built on the excellent work of
 [Neovim](https://neovim.io/), and the plugin authors listed in
 `.config/nvim/lazy-lock.json`.
 
-Released under the [MIT License](LICENSE).
+Configuration is released under the [MIT License](LICENSE). Native helpers and
+the vendored SketchyBar IPC header are GPL-3.0; see their
+[license](.config/sketchybar/helpers/vendor/LICENSE). The upstream icon font is
+CC0-1.0; see its [license](.config/sketchybar/fonts/LICENSE).

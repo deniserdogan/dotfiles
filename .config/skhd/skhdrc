@@ -2,10 +2,10 @@
 # Focus windows: Alt + Vim directions
 # ---------------------------------------------------------
 
-lalt - h : $HOME/.config/yabai/scripts/focus_window.sh west
-lalt - j : $HOME/.config/yabai/scripts/focus_window.sh south
-lalt - k : $HOME/.config/yabai/scripts/focus_window.sh north
-lalt - l : $HOME/.config/yabai/scripts/focus_window.sh east
+lalt - h : "$HOME/.config/yabai/scripts/focus_window.sh" west
+lalt - j : "$HOME/.config/yabai/scripts/focus_window.sh" south
+lalt - k : "$HOME/.config/yabai/scripts/focus_window.sh" north
+lalt - l : "$HOME/.config/yabai/scripts/focus_window.sh" east
 
 # ---------------------------------------------------------
 # Move windows inside the BSP tree
@@ -35,9 +35,9 @@ lalt - s : yabai -m window --toggle split
 
 # Smart stacks: Shift + Alt + S toggles the focused window in/out of a stack.
 # Alt + [ / ] cycles through stack members with wraparound.
-shift + lalt - s : $HOME/.config/yabai/scripts/stack_window.sh toggle
-lalt - 0x21 : $HOME/.config/yabai/scripts/stack_window.sh previous
-lalt - 0x1E : $HOME/.config/yabai/scripts/stack_window.sh next
+shift + lalt - s : "$HOME/.config/yabai/scripts/stack_window.sh" toggle
+lalt - 0x21 : "$HOME/.config/yabai/scripts/stack_window.sh" previous
+lalt - 0x1E : "$HOME/.config/yabai/scripts/stack_window.sh" next
 
 # Rotate and balance the current tree
 lalt - r : yabai -m space --rotate 90
@@ -55,52 +55,53 @@ shift + lalt - y : yabai -m space --mirror y-axis
 # Shift + Alt + M cycles that Space through every connected display.
 # ---------------------------------------------------------
 
-cmd + lalt - h : $HOME/.config/yabai/scripts/display_action.sh focus west
-cmd + lalt - j : $HOME/.config/yabai/scripts/display_action.sh focus south
-cmd + lalt - k : $HOME/.config/yabai/scripts/display_action.sh focus north
-cmd + lalt - l : $HOME/.config/yabai/scripts/display_action.sh focus east
-cmd + lalt - m : $HOME/.config/yabai/scripts/display_action.sh focus cycle
+cmd + lalt - h : "$HOME/.config/yabai/scripts/display_action.sh" focus west
+cmd + lalt - j : "$HOME/.config/yabai/scripts/display_action.sh" focus south
+cmd + lalt - k : "$HOME/.config/yabai/scripts/display_action.sh" focus north
+cmd + lalt - l : "$HOME/.config/yabai/scripts/display_action.sh" focus east
+cmd + lalt - m : "$HOME/.config/yabai/scripts/display_action.sh" focus cycle
 
-shift + cmd + lalt - h : $HOME/.config/yabai/scripts/display_action.sh move west
-shift + cmd + lalt - j : $HOME/.config/yabai/scripts/display_action.sh move south
-shift + cmd + lalt - k : $HOME/.config/yabai/scripts/display_action.sh move north
-shift + cmd + lalt - l : $HOME/.config/yabai/scripts/display_action.sh move east
-shift + cmd + lalt - b : $HOME/.config/yabai/scripts/display_action.sh builtin
-shift + lalt - m : $HOME/.config/yabai/scripts/display_action.sh cycle
+shift + cmd + lalt - h : "$HOME/.config/yabai/scripts/display_action.sh" move west
+shift + cmd + lalt - j : "$HOME/.config/yabai/scripts/display_action.sh" move south
+shift + cmd + lalt - k : "$HOME/.config/yabai/scripts/display_action.sh" move north
+shift + cmd + lalt - l : "$HOME/.config/yabai/scripts/display_action.sh" move east
+shift + cmd + lalt - b : "$HOME/.config/yabai/scripts/display_action.sh" builtin
+shift + lalt - m : "$HOME/.config/yabai/scripts/display_action.sh" cycle
 
 # ---------------------------------------------------------
 # Semantic numbered Spaces
 #
 # The number follows the Space when it moves between displays.
+# Missing numbered Spaces are created on the focused display before switching.
 # ---------------------------------------------------------
 
-cmd - 1 : $HOME/.config/yabai/scripts/focus_space.sh 1
-cmd - 2 : $HOME/.config/yabai/scripts/focus_space.sh 2
-cmd - 3 : $HOME/.config/yabai/scripts/focus_space.sh 3
-cmd - 4 : $HOME/.config/yabai/scripts/focus_space.sh 4
-cmd - 5 : $HOME/.config/yabai/scripts/focus_space.sh 5
-cmd - 6 : $HOME/.config/yabai/scripts/focus_space.sh 6
-cmd - 7 : $HOME/.config/yabai/scripts/focus_space.sh 7
-cmd - 8 : $HOME/.config/yabai/scripts/focus_space.sh 8
-cmd - 9 : $HOME/.config/yabai/scripts/focus_space.sh 9
+cmd - 1 : "$HOME/.config/yabai/scripts/focus_space.sh" 1 --create-missing
+cmd - 2 : "$HOME/.config/yabai/scripts/focus_space.sh" 2 --create-missing
+cmd - 3 : "$HOME/.config/yabai/scripts/focus_space.sh" 3 --create-missing
+cmd - 4 : "$HOME/.config/yabai/scripts/focus_space.sh" 4 --create-missing
+cmd - 5 : "$HOME/.config/yabai/scripts/focus_space.sh" 5 --create-missing
+cmd - 6 : "$HOME/.config/yabai/scripts/focus_space.sh" 6 --create-missing
+cmd - 7 : "$HOME/.config/yabai/scripts/focus_space.sh" 7 --create-missing
+cmd - 8 : "$HOME/.config/yabai/scripts/focus_space.sh" 8 --create-missing
+cmd - 9 : "$HOME/.config/yabai/scripts/focus_space.sh" 9 --create-missing
 
-shift + cmd - 1 : $HOME/.config/yabai/scripts/move_window_to_space.sh 1
-shift + cmd - 2 : $HOME/.config/yabai/scripts/move_window_to_space.sh 2
-shift + cmd - 3 : $HOME/.config/yabai/scripts/move_window_to_space.sh 3
-shift + cmd - 4 : $HOME/.config/yabai/scripts/move_window_to_space.sh 4
-shift + cmd - 5 : $HOME/.config/yabai/scripts/move_window_to_space.sh 5
-shift + cmd - 6 : $HOME/.config/yabai/scripts/move_window_to_space.sh 6
-shift + cmd - 7 : $HOME/.config/yabai/scripts/move_window_to_space.sh 7
-shift + cmd - 8 : $HOME/.config/yabai/scripts/move_window_to_space.sh 8
-shift + cmd - 9 : $HOME/.config/yabai/scripts/move_window_to_space.sh 9
+shift + cmd - 1 : "$HOME/.config/yabai/scripts/move_window_to_space.sh" 1
+shift + cmd - 2 : "$HOME/.config/yabai/scripts/move_window_to_space.sh" 2
+shift + cmd - 3 : "$HOME/.config/yabai/scripts/move_window_to_space.sh" 3
+shift + cmd - 4 : "$HOME/.config/yabai/scripts/move_window_to_space.sh" 4
+shift + cmd - 5 : "$HOME/.config/yabai/scripts/move_window_to_space.sh" 5
+shift + cmd - 6 : "$HOME/.config/yabai/scripts/move_window_to_space.sh" 6
+shift + cmd - 7 : "$HOME/.config/yabai/scripts/move_window_to_space.sh" 7
+shift + cmd - 8 : "$HOME/.config/yabai/scripts/move_window_to_space.sh" 8
+shift + cmd - 9 : "$HOME/.config/yabai/scripts/move_window_to_space.sh" 9
 
 # Create/delete on the focused display while keeping semantic roles clean.
-shift + lalt - n : $HOME/.config/yabai/scripts/create_space.sh
-shift + lalt - 0x33 : $HOME/.config/yabai/scripts/destroy_space.sh
+shift + lalt - n : "$HOME/.config/yabai/scripts/create_space.sh"
+shift + lalt - 0x33 : "$HOME/.config/yabai/scripts/destroy_space.sh"
 
 # Reload tools
 ctrl + lalt + cmd - r : yabai --restart-service
 ctrl + lalt + cmd - s : sketchybar --reload
 
 # Toggle macOS, Ghostty, Neovim, and SketchyBar between light and dark.
-ctrl + lalt + cmd - t : $HOME/.config/skhd/scripts/toggle_theme.sh
+ctrl + lalt + cmd - t : "$HOME/.config/skhd/scripts/toggle_theme.sh"
