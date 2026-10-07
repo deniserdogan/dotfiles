@@ -2,9 +2,8 @@
 
 `rice-app-icons.ttf` is a side-by-side derivative of
 [sketchybar-app-font](https://github.com/kvndrsslr/sketchybar-app-font), version
-3.0.5, distributed under CC0-1.0 (see `LICENSE`). It preserves the upstream
-application ligatures and adds the monochrome Incy outline in `incy.svg` at
-U+E900. App names and trademarks remain owned by their respective owners.
+3.0.5, distributed under CC0-1.0 (see `LICENSE`). App names and trademarks
+remain owned by their respective owners.
 
 Install this bundled font into `~/Library/Fonts/`. The original upstream font
 is not required for normal use and is never modified.

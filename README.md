@@ -18,21 +18,18 @@ switches between Nordfox dark and Xcode Light with one shortcut.
 
 | Component | Purpose | Main config |
 | --- | --- | --- |
-| [Yabai](https://github.com/asmvik/yabai) | BSP tiling, Spaces, displays, stacking | `.config/yabai/yabairc` |
-| [skhd](https://github.com/asmvik/skhd) | Global keyboard shortcuts | `.config/skhd/skhdrc` |
-| [SketchyBar](https://github.com/FelixKratz/SketchyBar) | Spaces, app, media, CPU, RAM, network, audio, battery, clock | `.config/sketchybar/sketchybarrc` |
-| [JankyBorders](https://github.com/FelixKratz/JankyBorders) | Crisp rounded focused-window border | `.config/borders/bordersrc` |
-| [Ghostty](https://github.com/ghostty-org/ghostty) | Fast terminal with synchronized themes | `.config/ghostty/config.ghostty` |
-| [Neovim](https://neovim.io/) | LSP, completion, formatting, linting, tests, DAP, Git, tasks, sessions | `.config/nvim/` |
+| [Yabai](https://github.com/asmvik/yabai) | BSP tiling, Spaces, displays, stacking | `yabai/yabairc` |
+| [skhd](https://github.com/asmvik/skhd) | Global keyboard shortcuts | `skhd/skhdrc` |
+| [SketchyBar](https://github.com/FelixKratz/SketchyBar) | Spaces, app, media, CPU, RAM, network, audio, battery, clock | `sketchybar/sketchybarrc` |
+| [JankyBorders](https://github.com/FelixKratz/JankyBorders) | Crisp rounded focused-window border | `borders/bordersrc` |
+| [Ghostty](https://github.com/ghostty-org/ghostty) | Fast terminal with synchronized themes | `ghostty/config.ghostty` |
+| [Neovim](https://neovim.io/) | LSP, completion, formatting, linting, tests, DAP, Git, tasks, sessions | `nvim/` |
 
 The SketchyBar is intentionally useful, not decorative:
 
 - semantic numbered Spaces that keep their number when moved between displays;
-- vector application icons, a compact desktop icon for empty Spaces, and a
-  stack-size indicator;
-- native hover feedback in both themes, without shell processes or layout jumps;
-- atomic desktop-strip updates using stable native IDs, so deleting a middle
-  desktop does not briefly scramble its number and app icons;
+- application icons for each Space and a stack-size indicator;
+- native hover feedback in both themes;
 - a clickable Apple control center with system, display, network, VPN, battery,
   and volume details;
 - currently playing media with click-to-play/pause;
@@ -44,6 +41,9 @@ The SketchyBar is intentionally useful, not decorative:
 
 Read the scripts before running them. These are personal dotfiles and the setup
 changes window-management behavior across macOS.
+
+Existing installs: configs now live at the repository root, not inside
+`.config/`. If you linked the old layout, repeat step 3 after pulling.
 
 ### 1. Install Homebrew and packages
 
@@ -60,28 +60,23 @@ The Brewfile installs the desktop tools, Ghostty, Neovim, `jq`,
 installs its language-specific editor tooling through Mason on first launch.
 
 SketchyBar uses the bundled **Rice App Icons** font, derived from
-[sketchybar-app-font](https://github.com/kvndrsslr/sketchybar-app-font) with an
-additional Incy outline. Install it, then log out and back in if macOS does not
-notice the font immediately:
+[sketchybar-app-font](https://github.com/kvndrsslr/sketchybar-app-font). Install
+it, then log out and back in if macOS does not notice the font immediately:
 
 ```sh
 mkdir -p ~/Library/Fonts
-cp .config/sketchybar/fonts/rice-app-icons.ttf ~/Library/Fonts/
+cp sketchybar/fonts/rice-app-icons.ttf ~/Library/Fonts/
 ```
 
-The bar and Space shortcuts require two small native helpers. Install Apple's
+The bar and Space shortcuts require native helpers. Install Apple's
 Command Line Tools if needed (`xcode-select --install`), then build them in the
 checkout before starting services:
 
 ```sh
-sh .config/sketchybar/helpers/build.sh
-python3 .config/sketchybar/helpers/tests/space_controller_test.py
+sh sketchybar/helpers/build.sh
 ```
 
-The tests use fixtures and never create, delete, or move real desktops. Helper
-binaries are built locally and ignored by Git. See the
-[native helper notes](.config/sketchybar/helpers/README.md) and
-[font notes](.config/sketchybar/fonts/README.md) for implementation and rebuilding.
+Helper binaries are built locally and ignored by Git.
 
 ### 2. Configure macOS
 
@@ -100,6 +95,9 @@ Accessibility**. Restart each service after granting access.
 
 ### 3. Link the configs
 
+If the repository itself is checked out at `~/.config`, skip this section:
+the files are already in their live locations.
+
 Back up any existing configuration first:
 
 ```sh
@@ -110,7 +108,7 @@ for name in borders ghostty nvim sketchybar skhd yabai; do
   if [ -e "$HOME/.config/$name" ] || [ -L "$HOME/.config/$name" ]; then
     mv "$HOME/.config/$name" "$HOME/.config/$name.backup-$stamp"
   fi
-  ln -s "$HOME/dotfiles/.config/$name" "$HOME/.config/$name"
+  ln -s "$HOME/dotfiles/$name" "$HOME/.config/$name"
 done
 
 chmod +x ~/.config/borders/bordersrc
@@ -148,7 +146,7 @@ does not ship a `yabai.sudoers` file because another user's username, binary
 path, and hash would be wrong.
 
 For the historical macOS 26.6 compatibility workaround, see
-[the native scripting-addition note](.config/yabai/native-fix/README.md).
+[the native scripting-addition note](yabai/native-fix/README.md).
 The loader hook falls back to the Homebrew binary when no side-by-side loader
 is installed. Machine-specific installers and patched binaries are not shipped.
 
@@ -230,19 +228,14 @@ SketchyBar rebuilds the Space pills after topology changes.
 | `Shift Alt N` | Create a Space on the focused display |
 | `Shift Alt Backspace` | Destroy the focused Space |
 
-The first run creates `.config/yabai/space_roles.tsv`. It maps stable Space
+The first run creates `yabai/space_roles.tsv`. It maps stable Space
 identities to `slot.N` labels and is intentionally ignored by Git because it is
 machine state. When a Space moves to another display, `Cmd N` still follows the
 role instead of its temporary Mission Control index.
 
-With four desktops, `Cmd 7` creates 5, 6 and 7 on the focused display and focuses
-7 once the native burst is complete. Press the current desktop's shortcut again
-to return to the previous desktop. Deletion switches directly to a neighboring
-desktop on the same display. The last desktop on a display is protected.
-
-Creation is explicit: event callbacks and stale bar clicks never create
-desktops. One non-blocking lock prevents overlapping operations from queuing
-and unexpectedly running later; the active operation commits the final strip.
+Missing desktops are created on the focused display. Press the current
+desktop's shortcut again to return to the previous desktop. Deletion moves to
+a neighboring desktop; the last desktop on each display is protected.
 
 ### Reload and theme
 
@@ -453,25 +446,25 @@ first Enter accepts a visible suggestion and the next Enter executes.
 
 For the language manifest, plugin architecture, maintenance commands,
 formatting/lint policy, large-file behavior, and instructions for adding a
-language, read the [Neovim guide](.config/nvim/README.md).
+language, read the [Neovim guide](nvim/README.md).
 
 ## Make it yours
 
 ### Colors and themes
 
-- Edit both palettes in `.config/sketchybar/colors.sh`.
-- Change Ghostty's pair in `.config/ghostty/config.ghostty`.
+- Edit both palettes in `sketchybar/colors.sh`.
+- Change Ghostty's pair in `ghostty/config.ghostty`.
 - Change Neovim's dark/light schemes in
-  `.config/nvim/lua/plugins/colorscheme.lua`.
-- Match border colors in `.config/yabai/yabairc` and
-  `.config/borders/bordersrc`.
+  `nvim/lua/plugins/colorscheme.lua`.
+- Match border colors in `yabai/yabairc` and
+  `borders/bordersrc`.
 
 Keep the dark and light names aligned if you want `Ctrl Alt Cmd T` to switch
 everything together.
 
 ### Layout and spacing
 
-Edit `.config/yabai/yabairc`:
+Edit `yabai/yabairc`:
 
 - `split_ratio` controls the initial 50/50 split;
 - `top_padding`, `bottom_padding`, `left_padding`, and `right_padding` control
@@ -480,12 +473,12 @@ Edit `.config/yabai/yabairc`:
 - `external_bar all:46:0` reserves room for SketchyBar;
 - the `rule --add` lines decide which applications float.
 
-Edit `.config/sketchybar/sketchybarrc` to change bar height, margin, offset,
+Edit `sketchybar/sketchybarrc` to change bar height, margin, offset,
 corner radius, blur, fonts, widget order, or update rates.
 
 ### Shortcuts
 
-All global bindings are in `.config/skhd/skhdrc`. Change the left side of a
+All global bindings are in `skhd/skhdrc`. Change the left side of a
 binding while leaving its command intact. skhd hotloads changes; if it does not,
 run:
 
@@ -498,16 +491,14 @@ On non-US keyboard layouts, the `0x21`, `0x1E`, and `0x33` keycodes for `[`,
 
 ### Bar applications
 
-- Add application overrides in `.config/sketchybar/plugins/icon_map.sh`.
-  The generated lookup covers the bundled font's app aliases and unknown apps
-  keep a generic icon rather than an empty slot.
+- Add application overrides in `sketchybar/plugins/icon_map.sh`.
 - Remove or replace the AmneziaVPN popup row if you use another VPN.
 - Remove the media item if you do not want `nowplaying-cli`.
 - System telemetry uses standard macOS tools and does not send data anywhere.
 
 ### Neovim languages
 
-`.config/nvim/lua/config/languages.lua` is the source of truth for LSP servers,
+`nvim/lua/config/languages.lua` is the source of truth for LSP servers,
 formatters, linters, Treesitter parsers, debuggers, test adapters, and Mason
 tools. Change one language definition there instead of maintaining duplicate
 lists across plugins.
@@ -538,13 +529,12 @@ tail -f /tmp/skhd_$USER.err.log
 
 ```text
 .
-├── .config
-│   ├── borders
-│   ├── ghostty
-│   ├── nvim
-│   ├── sketchybar
-│   ├── skhd
-│   └── yabai
+├── borders
+├── ghostty
+├── nvim
+├── sketchybar
+├── skhd
+├── yabai
 ├── screenshots
 ├── Brewfile
 ├── LICENSE
@@ -553,8 +543,7 @@ tail -f /tmp/skhd_$USER.err.log
 
 Machine-only files—OAuth data, logs, backups, Yabai Space UUID state, the Ghostty
 theme override, native helper binaries and sudoers hashes—are intentionally
-excluded. The bundled icon font is included so normal installation needs no
-font-building dependencies.
+excluded.
 
 ## Acknowledgements
 
@@ -563,9 +552,9 @@ Built on the excellent work of
 [FelixKratz's SketchyBar and JankyBorders](https://github.com/FelixKratz),
 [Ghostty](https://github.com/ghostty-org/ghostty),
 [Neovim](https://neovim.io/), and the plugin authors listed in
-`.config/nvim/lazy-lock.json`.
+`nvim/lazy-lock.json`.
 
 Configuration is released under the [MIT License](LICENSE). Native helpers and
 the vendored SketchyBar IPC header are GPL-3.0; see their
-[license](.config/sketchybar/helpers/vendor/LICENSE). The upstream icon font is
-CC0-1.0; see its [license](.config/sketchybar/fonts/LICENSE).
+[license](sketchybar/helpers/vendor/LICENSE). The upstream icon font is
+CC0-1.0; see its [license](sketchybar/fonts/LICENSE).

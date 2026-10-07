@@ -1,19 +1,33 @@
+# Only the shared dotfiles belong in this repository. Other ~/.config data stays
+# private and untracked, including newly installed applications.
+/*
+!/.gitignore
+!/Brewfile
+!/LICENSE
+!/README.md
+!/screenshots/
+!/borders/
+!/ghostty/
+!/nvim/
+!/sketchybar/
+!/skhd/
+!/yabai/
+
 .DS_Store
 
 # Machine-local state
-.config/yabai/space_roles.tsv
-.config/yabai/yabai.sudoers
-.config/yabai/native-fix/yabai
-.config/yabai/native-fix/*.sudoers
-.config/yabai/scripts/install_native_fix.sh
-.config/ghostty/theme-mode
-.config/sketchybar/helpers/native_motion
-.config/sketchybar/helpers/space_controller
+yabai/space_roles.tsv
+yabai/yabai.sudoers
+yabai/native-fix/yabai
+yabai/native-fix/*.sudoers
+yabai/scripts/install_native_fix.sh
+ghostty/theme-mode
+sketchybar/helpers/native_motion
+sketchybar/helpers/space_controller
 __pycache__/
 *.pyc
-.config/github-copilot/
-.config/nvim.backup-*/
-.config/nvim.log
+github-copilot/
+nvim.backup-*/
 nvim.log
 
 # Editor and shell noise
