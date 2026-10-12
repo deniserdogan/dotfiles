@@ -5,9 +5,15 @@
 
 @interface RiceTestController : RiceController
 @property NSUInteger assetNotifications;
+@property(copy) NSString *testMode;
 @end
 @implementation RiceTestController
 - (BOOL)applyLauncher { self.assetNotifications++; return YES; }
+- (NSDictionary *)currentTheme {
+  if (self.testMode) for (NSDictionary *theme in self.catalog)
+    if ([theme[@"mode"] isEqual:self.testMode]) return theme;
+  return [super currentTheme];
+}
 @end
 
 static void check(BOOL condition, NSString *message) {
@@ -122,8 +128,55 @@ int main(void) {
     check(thumbnail.isValid && thumbnail.size.width <= 512, @"Large images use bounded thumbnails");
     [controller show:@"wallpapers"];
     check(controller.cards.count == 1 && controller.cards[0].preview != nil, @"Wallpaper thumbnails populate the gallery");
+    check(controller.wallpaperSelector.segmentCount == 3 && [controller.wallpaperMode isEqual:[controller currentTheme][@"mode"]], @"Wallpaper assignment defaults to the current appearance, including fresh installs");
+    rice_save_personal_preferences(directory, @{@"wallpapers":@{@"light":@"Sample.png", @"dark":@"Sample.png"}, @"followAppearance":@YES});
+    controller.wallpaperSelector.selectedSegment = 1;
+    [controller wallpaperModeChanged:controller.wallpaperSelector];
+    check([controller.wallpaperMode isEqual:@"light"] && controller.cards[0].chosen &&
+      [controller.cards[0].subtitle containsString:@"Light / Dark"], @"Light assignment highlights the saved image and labels its roles");
+    controller.wallpaperSelector.selectedSegment = 2;
+    [controller wallpaperModeChanged:controller.wallpaperSelector];
+    check([controller.wallpaperMode isEqual:@"dark"] && controller.cards[0].chosen, @"Dark assignment is independently browsable without changing appearance");
+    controller.testMode = @"light";
+    [controller show:@"wallpapers"];
+    check([controller.wallpaperMode isEqual:@"light"], @"Reopening in light mode does not reuse a stale dark assignment");
+    controller.testMode = @"dark";
+    [controller show:@"wallpapers"];
+    check([controller.wallpaperMode isEqual:@"dark"], @"Reopening in dark mode targets the dark default");
+    controller.testMode = nil;
     [controller applyWallpaper:[NSURL fileURLWithPath:@"/private/tmp/not-in-library.png"]];
     check([controller.galleryStatus.stringValue hasPrefix:@"Cannot open"], @"Out-of-library wallpapers cannot be applied");
+    [controller show:@"terminal"];
+    check(controller.sections.segmentCount == 4 && controller.sections.selectedSegment == 3 && !controller.cards.count,
+      @"Terminal settings have a dedicated native customization section");
+    check(controller.opacitySlider.continuous && controller.fontSizeSlider.continuous &&
+      controller.opacitySlider.minValue == 0 && controller.opacitySlider.maxValue == 100 &&
+      controller.fontSizeSlider.minValue == 8 && controller.fontSizeSlider.maxValue == 40,
+      @"Native sliders expose valid, continuous opacity and font-size ranges");
+    controller.opacitySlider.doubleValue = 83.3;
+    [controller ghosttySliderChanged:controller.opacitySlider];
+    NSTimer *pending = controller.ghosttyTimer;
+    controller.fontSizeSlider.doubleValue = 18.7;
+    [controller ghosttySliderChanged:controller.fontSizeSlider];
+    check(controller.ghosttyTimer == pending && controller.ghosttyPending &&
+      [controller.opacityValue.stringValue isEqual:@"83%"] && [controller.fontSizeValue.stringValue isEqual:@"18.5 pt"],
+      @"Dragging updates labels immediately and coalesces writes into one timer");
+    [controller show:@"themes"];
+    NSDictionary *terminal = rice_ghostty_settings(directory);
+    check(!controller.ghosttyPending && !controller.ghosttyTimer &&
+      [terminal[@"opacity"] doubleValue] == .83 && [terminal[@"fontSize"] doubleValue] == 18.5,
+      @"Leaving terminal settings flushes the last values without touching a live terminal");
+    [controller show:@"terminal"];
+    check(controller.opacitySlider.doubleValue == 83 && controller.fontSizeSlider.doubleValue == 18.5,
+      @"Saved terminal slider values survive rebuilding the panel");
+    [controller ghosttySliderChanged:controller.opacitySlider];
+    check(!controller.ghosttyPending && !controller.ghosttyTimer, @"Unchanged slider values never queue a redundant reload");
+    RiceTestController *shortPanel = [RiceTestController new];
+    shortPanel.catalog = controller.catalog; shortPanel.page = @"terminal";
+    shortPanel.root = [[RiceView alloc] initWithFrame:NSMakeRect(0, 0, 744, 400)];
+    [shortPanel buildTerminal];
+    for (NSView *view in shortPanel.root.subviews)
+      check(NSContainsRect(shortPanel.root.bounds, view.frame), @"Short displays keep terminal controls in a bounded scroll view");
     NSString *logoPath = [rice_asset_directory(directory, @"logos") stringByAppendingPathComponent:@"Mark.svg"];
     [@"<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><circle cx='50' cy='50' r='35'/></svg>" writeToFile:logoPath atomically:YES encoding:NSUTF8StringEncoding error:NULL];
     check(rice_asset_thumbnail([NSURL fileURLWithPath:logoPath]).isValid, @"SVG logos render natively");

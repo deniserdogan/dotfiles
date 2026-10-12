@@ -29,6 +29,7 @@ yabai/scripts/install_native_fix.sh
 ghostty/theme-mode
 sketchybar/helpers/native_motion
 sketchybar/helpers/native_theme
+sketchybar/helpers/native_wallpaper
 sketchybar/helpers/RicePanel.app/
 sketchybar/themes/selection.json
 sketchybar/helpers/space_controller

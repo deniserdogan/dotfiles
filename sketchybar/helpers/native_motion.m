@@ -124,6 +124,9 @@ static void append_group(NSMutableArray *args, NSString *owner, BOOL open) {
   NSString *sid = [owner substringFromIndex:6];
   BOOL active = [selected containsObject:owner];
   uint32_t tint = active ? active_text : text;
+  // The first app is the owner's label, not a child item. Its slot must track
+  // the same pitch as every child, in both directions of the hover animation.
+  rice_space_primary_layout(args, owner, plan, open);
   for (NSUInteger i = 1; i < [plan[@"apps"] count]; i++) {
     NSString *child = [NSString stringWithFormat:@"space_app.%@.%lu", sid, i];
     BOOL visible = rice_space_child_visible(i, open);

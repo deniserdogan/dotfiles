@@ -8,6 +8,8 @@
 #include "theme_preview.h"
 #include "panel_status.h"
 #include "personal_assets.h"
+#include "appearance_wallpaper.h"
+#include "ghostty_settings.h"
 
 static NSString *directory;
 static const char *panelPort = "com.denis.sketchybar.native_panel";
@@ -167,8 +169,16 @@ static RiceActionLayout rice_action_layout(NSRect bounds, BOOL preview, BOOL sub
 @property(strong) NSScreen *targetScreen;
 @property(strong) NSArray *assetWatchers;
 @property(strong) dispatch_queue_t thumbnailQueue;
+@property(strong) dispatch_queue_t wallpaperQueue;
+@property(strong) NSSegmentedControl *wallpaperSelector;
+@property(copy) NSString *wallpaperMode;
+@property BOOL wallpaperBusy;
+@property(strong) NSSlider *opacitySlider, *fontSizeSlider;
+@property(strong) NSTextField *opacityValue, *fontSizeValue;
+@property(strong) NSTimer *ghosttyTimer;
+@property BOOL ghosttyPending;
+@property double ghosttyOpacity, ghosttyFontSize;
 @property NSUInteger refreshGeneration;
-@property BOOL allDisplays;
 - (void)show:(NSString *)page;
 - (void)close;
 @end
@@ -259,6 +269,7 @@ static RiceActionLayout rice_action_layout(NSRect bounds, BOOL preview, BOOL sub
     } else if (event.keyCode == 36 || event.keyCode == 76) [self.cards[self.focusIndex] performClick:nil];
   };
   if ([page isEqual:@"themes"]) [self buildGallery];
+  else if ([page isEqual:@"terminal"]) [self buildTerminal];
   else if (gallery) [self buildAssets];
   else [self buildControl];
   self.focusIndex = MAX(0, MIN(self.focusIndex, (NSInteger)self.cards.count-1));
@@ -275,7 +286,7 @@ static RiceActionLayout rice_action_layout(NSRect bounds, BOOL preview, BOOL sub
   [self label:machine frame:NSMakeRect(24, 80, 360, 18) size:12 weight:NSFontWeightRegular secondary:YES];
   NSDictionary *theme = [self currentTheme];
   RiceButton *hero = [[RiceButton alloc] initWithFrame:NSMakeRect(22, 119, 376, 70)];
-  hero.title = @"Personalize your desktop"; hero.subtitle = [NSString stringWithFormat:@"%lu themes · Wallpapers · Logo", self.catalog.count];
+  hero.title = @"Personalize your desktop"; hero.subtitle = [NSString stringWithFormat:@"%lu themes · Wallpapers · Terminal", self.catalog.count];
   hero.preview = rice_theme_preview(theme);
   hero.symbol = @"paintpalette"; hero.handler = ^{ [weakSelf show:@"themes"]; }; hero.accessibilityLabel = @"Explore themes";
   [self.root addSubview:hero];
@@ -350,14 +361,95 @@ static RiceActionLayout rice_action_layout(NSRect bounds, BOOL preview, BOOL sub
   [self label:@"Make it yours" frame:NSMakeRect(63, 23, 450, 32) size:24 weight:NSFontWeightBold secondary:NO];
   NSButton *done = [NSButton buttonWithTitle:@"Done" target:self action:@selector(done:)];
   done.frame = NSMakeRect(649, 25, 72, 27); done.bezelStyle = NSBezelStyleRounded; done.keyEquivalent = @"\e"; [self.root addSubview:done];
-  self.sections = [NSSegmentedControl segmentedControlWithLabels:@[@"Themes", @"Wallpapers", @"Launcher Logo"] trackingMode:NSSegmentSwitchTrackingSelectOne target:self action:@selector(sectionChanged:)];
-  self.sections.frame = NSMakeRect(22, 68, 330, 25);
-  self.sections.selectedSegment = [self.page isEqual:@"themes"] ? 0 : [self.page isEqual:@"wallpapers"] ? 1 : 2;
+  self.sections = [NSSegmentedControl segmentedControlWithLabels:@[@"Themes", @"Wallpapers", @"Launcher Logo", @"Terminal"] trackingMode:NSSegmentSwitchTrackingSelectOne target:self action:@selector(sectionChanged:)];
+  self.sections.frame = NSMakeRect(22, 68, 430, 25);
+  self.sections.selectedSegment = [@[@"themes", @"wallpapers", @"logos", @"terminal"] indexOfObject:self.page];
   [self.root addSubview:self.sections];
 }
 - (void)sectionChanged:(NSSegmentedControl *)sender {
   self.focusIndex = 0;
-  [self show:@[@"themes", @"wallpapers", @"logos"][sender.selectedSegment]];
+  [self show:@[@"themes", @"wallpapers", @"logos", @"terminal"][sender.selectedSegment]];
+}
+- (void)buildTerminal {
+  [self buildGalleryHeader];
+  NSUInteger headerCount = self.root.subviews.count;
+  NSDictionary *values = rice_ghostty_settings(directory);
+  if (!self.ghosttyPending) {
+    self.ghosttyOpacity = [values[@"opacity"] doubleValue];
+    self.ghosttyFontSize = [values[@"fontSize"] doubleValue];
+  }
+  [self label:@"Ghostty" frame:NSMakeRect(30, 121, 500, 32) size:23 weight:NSFontWeightBold secondary:NO];
+  [self label:@"Your terminal, tuned to you." frame:NSMakeRect(30, 161, 660, 20) size:13 weight:NSFontWeightRegular secondary:YES];
+  RiceView *surface = [[RiceView alloc] initWithFrame:NSMakeRect(24, 209, 696, 225)];
+  surface.wantsLayer = YES; surface.layer.cornerRadius = 14;
+  surface.layer.backgroundColor = [NSColor.controlBackgroundColor colorWithAlphaComponent:.65].CGColor;
+  [self.root addSubview:surface];
+  [self label:@"Background opacity" frame:NSMakeRect(42, 227, 400, 20) size:13 weight:NSFontWeightSemibold secondary:NO];
+  self.opacityValue = [self label:[NSString stringWithFormat:@"%.0f%%", self.ghosttyOpacity*100]
+    frame:NSMakeRect(612, 227, 80, 20) size:13 weight:NSFontWeightMedium secondary:NO];
+  self.opacityValue.alignment = NSTextAlignmentRight;
+  self.opacitySlider = [NSSlider sliderWithValue:self.ghosttyOpacity*100 minValue:0 maxValue:100 target:self action:@selector(ghosttySliderChanged:)];
+  self.opacitySlider.frame = NSMakeRect(42, 263, 650, 24); self.opacitySlider.continuous = YES;
+  self.opacitySlider.accessibilityLabel = @"Ghostty background opacity";
+  [self.root addSubview:self.opacitySlider];
+  [self label:@"Transparent" frame:NSMakeRect(42, 292, 300, 16) size:10 weight:NSFontWeightRegular secondary:YES];
+  NSTextField *opaque = [self label:@"Opaque" frame:NSMakeRect(542, 292, 150, 16) size:10 weight:NSFontWeightRegular secondary:YES];
+  opaque.alignment = NSTextAlignmentRight;
+  [self label:@"Font size" frame:NSMakeRect(42, 331, 400, 20) size:13 weight:NSFontWeightSemibold secondary:NO];
+  self.fontSizeValue = [self label:[NSString stringWithFormat:@"%.1f pt", self.ghosttyFontSize]
+    frame:NSMakeRect(592, 331, 100, 20) size:13 weight:NSFontWeightMedium secondary:NO];
+  self.fontSizeValue.alignment = NSTextAlignmentRight;
+  self.fontSizeSlider = [NSSlider sliderWithValue:self.ghosttyFontSize minValue:8 maxValue:40 target:self action:@selector(ghosttySliderChanged:)];
+  self.fontSizeSlider.frame = NSMakeRect(42, 367, 650, 24); self.fontSizeSlider.continuous = YES;
+  self.fontSizeSlider.accessibilityLabel = @"Ghostty font size in points";
+  [self.root addSubview:self.fontSizeSlider];
+  [self label:@"8 pt" frame:NSMakeRect(42, 396, 300, 16) size:10 weight:NSFontWeightRegular secondary:YES];
+  NSTextField *large = [self label:@"40 pt" frame:NSMakeRect(542, 396, 150, 16) size:10 weight:NSFontWeightRegular secondary:YES];
+  large.alignment = NSTextAlignmentRight;
+  NSTextField *note = [NSTextField wrappingLabelWithString:@"Saved automatically on this Mac. Font size reloads in place; manually zoomed tabs keep their zoom (⌘0 resets it). Ghostty may require a restart for opacity changes, and native fullscreen is always opaque."];
+  note.frame = NSMakeRect(32, 453, 680, 66); note.font = [NSFont systemFontOfSize:11];
+  note.textColor = NSColor.secondaryLabelColor; [self.root addSubview:note];
+  // The same panel works on short external displays without clipping controls.
+  CGFloat scrollHeight = self.root.bounds.size.height - 149;
+  NSScrollView *scroll = [[NSScrollView alloc] initWithFrame:NSMakeRect(0, 108, 744, scrollHeight)];
+  scroll.drawsBackground = NO; scroll.hasVerticalScroller = YES; scroll.autohidesScrollers = YES;
+  RiceView *content = [[RiceView alloc] initWithFrame:NSMakeRect(0, 0, 744, MAX(scrollHeight, 430))];
+  NSArray *controls = [self.root.subviews subarrayWithRange:NSMakeRange(headerCount, self.root.subviews.count-headerCount)];
+  for (NSView *view in controls) {
+    [view removeFromSuperview]; view.frame = NSOffsetRect(view.frame, 0, -108); [content addSubview:view];
+  }
+  scroll.documentView = content; [self.root addSubview:scroll];
+  self.galleryStatus = [self label:@"Machine-local settings · Kept across light/dark switches"
+    frame:NSMakeRect(24, self.root.bounds.size.height-26, 690, 17) size:10 weight:NSFontWeightRegular secondary:YES];
+}
+- (void)ghosttySliderChanged:(NSSlider *)sender {
+  double previousOpacity = self.ghosttyOpacity, previousFontSize = self.ghosttyFontSize;
+  if (sender == self.opacitySlider) self.ghosttyOpacity = round(sender.doubleValue)/100;
+  else if (sender == self.fontSizeSlider) self.ghosttyFontSize = round(sender.doubleValue*2)/2;
+  else return;
+  self.opacityValue.stringValue = [NSString stringWithFormat:@"%.0f%%", self.ghosttyOpacity*100];
+  self.fontSizeValue.stringValue = [NSString stringWithFormat:@"%.1f pt", self.ghosttyFontSize];
+  if (self.ghosttyOpacity == previousOpacity && self.ghosttyFontSize == previousFontSize) return;
+  self.ghosttyPending = YES;
+  // Keep native dragging immediate, but coalesce disk writes and config reloads.
+  if (!self.ghosttyTimer) {
+    __weak RiceController *weakSelf = self;
+    self.ghosttyTimer = [NSTimer timerWithTimeInterval:.15 repeats:NO block:^(NSTimer *timer) {
+      (void)timer; [weakSelf flushGhosttySettings];
+    }];
+    [NSRunLoop.mainRunLoop addTimer:self.ghosttyTimer forMode:NSRunLoopCommonModes];
+  }
+}
+- (void)flushGhosttySettings {
+  [self.ghosttyTimer invalidate]; self.ghosttyTimer = nil;
+  if (!self.ghosttyPending) return;
+  self.ghosttyPending = NO;
+  NSError *error = nil;
+  BOOL saved = rice_ghostty_save_settings(directory, self.ghosttyOpacity, self.ghosttyFontSize, &error);
+  BOOL reloaded = saved && !self.snapshot && rice_ghostty_reload();
+  if ([self.page isEqual:@"terminal"]) self.galleryStatus.stringValue = saved ?
+    reloaded ? @"Saved · Font reloaded · Opacity may need a Ghostty restart" : @"Saved · Applies when Ghostty opens" :
+    error.localizedDescription ?: @"Could not save terminal settings.";
 }
 - (void)buildGallery {
   [self buildGalleryHeader];
@@ -419,16 +511,22 @@ static RiceActionLayout rice_action_layout(NSRect bounds, BOOL preview, BOOL sub
   [self buildGalleryHeader];
   BOOL logos = [self.page isEqual:@"logos"];
   NSArray *files = rice_asset_files(directory, self.page);
+  NSDictionary *preferences = rice_personal_preferences(directory);
   if (logos) {
     NSButton *tint = [NSButton checkboxWithTitle:@"Use theme color" target:self action:@selector(logoTintChanged:)];
     tint.frame = NSMakeRect(22, 109, 190, 25);
     tint.state = [rice_personal_preferences(directory)[@"tintLogo"] boolValue] ? NSControlStateValueOn : NSControlStateValueOff;
     [self.root addSubview:tint];
   } else {
-    NSSegmentedControl *displays = [NSSegmentedControl segmentedControlWithLabels:@[@"This display", @"All displays"]
-      trackingMode:NSSegmentSwitchTrackingSelectOne target:self action:@selector(wallpaperScopeChanged:)];
-    displays.frame = NSMakeRect(22, 108, 240, 25); displays.selectedSegment = self.allDisplays ? 1 : 0;
-    [self.root addSubview:displays];
+    if (!self.wallpaperMode) self.wallpaperMode = [self currentTheme][@"mode"];
+    self.wallpaperSelector = [NSSegmentedControl segmentedControlWithLabels:@[@"Static", @"Light", @"Dark"]
+      trackingMode:NSSegmentSwitchTrackingSelectOne target:self action:@selector(wallpaperModeChanged:)];
+    self.wallpaperSelector.frame = NSMakeRect(22, 108, 240, 25);
+    self.wallpaperSelector.selectedSegment = [@[@"static", @"light", @"dark"] indexOfObject:self.wallpaperMode];
+    self.wallpaperSelector.enabled = !self.wallpaperBusy;
+    self.wallpaperSelector.toolTip = @"Static uses one wallpaper. Light and Dark assign images that switch automatically with macOS appearance.";
+    self.wallpaperSelector.accessibilityLabel = @"Wallpaper appearance assignment";
+    [self.root addSubview:self.wallpaperSelector];
   }
   NSButton *refresh = [NSButton buttonWithImage:[NSImage imageWithSystemSymbolName:@"arrow.clockwise" accessibilityDescription:@"Refresh images"] target:self action:@selector(refreshAssets:)];
   refresh.frame = NSMakeRect(543, 108, 31, 25); refresh.bezelStyle = NSBezelStyleTexturedRounded; [self.root addSubview:refresh];
@@ -439,7 +537,6 @@ static RiceActionLayout rice_action_layout(NSRect bounds, BOOL preview, BOOL sub
   scroll.drawsBackground = NO; scroll.hasVerticalScroller = YES; scroll.autohidesScrollers = YES;
   NSUInteger count = files.count + (logos ? 1 : 0);
   RiceView *grid = [[RiceView alloc] initWithFrame:NSMakeRect(0, 0, 716, MAX(height, ((count+2)/3)*184))];
-  NSDictionary *preferences = rice_personal_preferences(directory);
   NSString *activeLogo = preferences[@"logo"];
   BOOL logoExists = NO;
   for (NSURL *file in files) if ([file.lastPathComponent isEqual:activeLogo]) logoExists = YES;
@@ -453,7 +550,16 @@ static RiceActionLayout rice_action_layout(NSRect bounds, BOOL preview, BOOL sub
     card.artwork = YES; card.logoArtwork = logos; card.assetURL = url;
     card.title = url ? url.lastPathComponent.stringByDeletingPathExtension : @"Apple (default)";
     card.subtitle = url ? url.pathExtension.uppercaseString : @"Restore the standard launcher";
-    card.chosen = logos ? [activeLogo isEqual:url.lastPathComponent ?: @""] : [url.URLByStandardizingPath isEqual:wallpaper.URLByStandardizingPath];
+    card.chosen = logos ? [activeLogo isEqual:url.lastPathComponent ?: @""] :
+      [self.wallpaperMode isEqual:@"static"] ? [url.URLByStandardizingPath isEqual:wallpaper.URLByStandardizingPath] :
+      rice_wallpaper_name_matches(preferences[@"wallpapers"][self.wallpaperMode], url.lastPathComponent);
+    if (!logos) {
+      NSMutableArray *roles = [NSMutableArray array];
+      for (NSString *mode in @[@"light", @"dark"])
+        if (rice_wallpaper_name_matches(preferences[@"wallpapers"][mode], url.lastPathComponent)) [roles addObject:mode.capitalizedString];
+      if (roles.count) card.subtitle = [NSString stringWithFormat:@"%@ · %@", card.subtitle, [roles componentsJoinedByString:@" / "]];
+      card.enabled = !self.wallpaperBusy;
+    }
     card.toolTip = url ? url.lastPathComponent : @"Restore the Apple logo";
     card.accessibilityLabel = [NSString stringWithFormat:@"%@ %@", logos ? @"Use logo" : @"Set wallpaper", card.title];
     card.handler = ^{ if (logos) [weakSelf chooseLogo:url]; else [weakSelf applyWallpaper:url]; };
@@ -469,12 +575,14 @@ static RiceActionLayout rice_action_layout(NSRect bounds, BOOL preview, BOOL sub
   }
   scroll.documentView = grid; [self.root addSubview:scroll];
   NSString *message = logos ? @"Personal logos stay on this Mac · PNG, SVG or PDF recommended" :
-    files.count ? [NSString stringWithFormat:@"%lu wallpaper%@ · Current desktop · %@", files.count, files.count == 1 ? @"" : @"s", self.allDisplays ? @"All displays" : self.targetScreen.localizedName ?: @"This display"] :
+    files.count ? [NSString stringWithFormat:@"%lu wallpaper%@ · %@ · All Spaces & displays", files.count, files.count == 1 ? @"" : @"s",
+      [self.wallpaperMode isEqual:@"static"] ? @"One image for both appearances" : [NSString stringWithFormat:@"Assign %@ appearance", self.wallpaperMode]] :
     @"Private library · ~/.config/rice/wallpapers · Open folder to add images";
   self.galleryStatus = [self label:message frame:NSMakeRect(24, self.root.bounds.size.height-26, 690, 17) size:10 weight:NSFontWeightRegular secondary:YES];
 }
-- (void)wallpaperScopeChanged:(NSSegmentedControl *)sender {
-  self.allDisplays = sender.selectedSegment == 1;
+- (void)wallpaperModeChanged:(NSSegmentedControl *)sender {
+  if (self.wallpaperBusy) return;
+  self.wallpaperMode = @[@"static", @"light", @"dark"][sender.selectedSegment];
   [self build:@"wallpapers"]; [self.panel makeFirstResponder:self.root];
 }
 - (void)refreshAssets:(id)sender { (void)sender; [self build:self.page]; [self.panel makeFirstResponder:self.root]; }
@@ -484,21 +592,45 @@ static RiceActionLayout rice_action_layout(NSRect bounds, BOOL preview, BOOL sub
   [self close]; [NSWorkspace.sharedWorkspace openURL:url];
 }
 - (void)applyWallpaper:(NSURL *)url {
+  if (self.wallpaperBusy) return;
   if (![rice_asset_files(directory, @"wallpapers") containsObject:url] || !rice_asset_thumbnail(url)) {
     self.galleryStatus.stringValue = @"Cannot open this wallpaper. Check that the image has finished downloading."; return;
   }
-  NSScreen *display = self.targetScreen ?: NSScreen.mainScreen;
-  NSArray *screens = self.allDisplays ? NSScreen.screens : display ? @[display] : @[];
-  if (!screens.count) { self.galleryStatus.stringValue = @"No display is available. Try again after unlocking your Mac."; return; }
-  for (NSScreen *screen in screens) {
-    NSError *error = nil;
-    if (![NSWorkspace.sharedWorkspace setDesktopImageURL:url forScreen:screen options:
-        @{NSWorkspaceDesktopImageScalingKey:@(NSImageScaleProportionallyUpOrDown), NSWorkspaceDesktopImageAllowClippingKey:@YES} error:&error]) {
-      self.galleryStatus.stringValue = [@"Could not set wallpaper: " stringByAppendingString:error.localizedDescription ?: @"macOS rejected this image."]; return;
-    }
+  BOOL automatic = ![self.wallpaperMode isEqual:@"static"];
+  NSMutableDictionary *names = [rice_personal_preferences(directory)[@"wallpapers"] mutableCopy] ?: [NSMutableDictionary dictionary];
+  if (automatic) {
+    names[self.wallpaperMode] = url.lastPathComponent;
+    // On a fresh install, one image fills both roles until a second is chosen.
+    for (NSString *mode in @[@"light", @"dark"])
+      if (!rice_wallpaper_source(directory, names[mode])) names[mode] = url.lastPathComponent;
   }
-  for (RiceButton *card in self.cards) { card.chosen = [card.assetURL isEqual:url]; card.needsDisplay = YES; }
-  self.galleryStatus.stringValue = [NSString stringWithFormat:@"%@ applied · %@", url.lastPathComponent, self.allDisplays ? @"All displays" : @"This display"];
+  NSString *config = [directory copy];
+  self.wallpaperBusy = YES; self.wallpaperSelector.enabled = NO;
+  for (RiceButton *card in self.cards) card.enabled = NO;
+  self.galleryStatus.stringValue = automatic ? @"Preparing native light/dark wallpaper…" : @"Applying wallpaper to all Spaces…";
+  if (!self.wallpaperQueue) self.wallpaperQueue = dispatch_queue_create("com.denis.rice.wallpaper", DISPATCH_QUEUE_SERIAL_WITH_AUTORELEASE_POOL);
+  dispatch_async(self.wallpaperQueue, ^{
+    NSError *error = nil;
+    NSURL *target = automatic ? rice_wallpaper_pair(config, names, &error) : url;
+    BOOL applied = target && rice_wallpaper_apply_all_spaces(config, target, &error);
+    if (applied) {
+      // Re-read unrelated logo preferences after encoding, not before it.
+      NSMutableDictionary *current = rice_personal_preferences(config);
+      current[@"wallpapers"] = names; current[@"followAppearance"] = @(automatic);
+      if (!rice_save_personal_preferences(config, current)) {
+        applied = NO; rice_wallpaper_error(&error, @"Wallpaper applied, but its choices could not be saved.");
+      }
+    }
+    NSString *message = applied ? automatic ? @"Light/dark pair applied · macOS switches it automatically · All Spaces" : @"Wallpaper applied · All Spaces & displays" : error.localizedDescription ?: @"Could not set wallpaper.";
+    dispatch_async(dispatch_get_main_queue(), ^{
+      self.wallpaperBusy = NO;
+      if ([self.page isEqual:@"wallpapers"]) {
+        [self build:@"wallpapers"]; self.galleryStatus.stringValue = message;
+        [self.panel makeFirstResponder:self.root];
+      }
+      if (!applied) NSLog(@"Wallpaper: %@", message);
+    });
+  });
 }
 - (BOOL)applyLauncher {
   if (self.snapshot) return YES;
@@ -554,6 +686,7 @@ static RiceActionLayout rice_action_layout(NSRect bounds, BOOL preview, BOOL sub
   for (RiceButton *card in self.cards) [cards addObject:@{@"id":card.theme[@"id"] ?: card.assetURL.lastPathComponent ?: @"default", @"selected":@(card.chosen)}];
   NSDictionary *state = @{@"page":self.page ?: @"closed", @"visible":@(self.panel.visible),
     @"themes":cards, @"filter":@(self.filterIndex), @"status":self.galleryStatus.stringValue ?: @"",
+    @"wallpaperMode":self.wallpaperMode ?: @"", @"terminal":rice_ghostty_settings(directory),
     @"width":@(self.root.bounds.size.width), @"height":@(self.root.bounds.size.height)};
   [[NSJSONSerialization dataWithJSONObject:state options:NSJSONWritingPrettyPrinted error:NULL] writeToFile:path atomically:YES];
 }
@@ -567,8 +700,17 @@ static RiceActionLayout rice_action_layout(NSRect bounds, BOOL preview, BOOL sub
     for (RiceButton *card in self.cards) { card.chosen = [card.theme[@"id"] isEqual:current[@"id"]]; card.needsDisplay = YES; }
     self.galleryStatus.stringValue = [NSString stringWithFormat:@"%@ active  ·  Previews are illustrative", current[@"name"]];
   } else if (self.panel.visible && [self.page isEqual:@"control"]) [self build:@"control"];
+  else if (self.panel.visible && [self.page isEqual:@"wallpapers"]) {
+    self.wallpaperMode = current[@"mode"];
+    [self build:@"wallpapers"];
+  }
+  else if (self.panel.visible && [self.page isEqual:@"terminal"]) [self build:@"terminal"];
 }
 - (void)show:(NSString *)page {
+  if (![page isEqual:@"terminal"]) [self flushGhosttySettings];
+  // Opening the picker always targets the current appearance, not the last
+  // assignment tab visited. An explicit Light/Dark/Static choice still works.
+  if ([page isEqual:@"wallpapers"]) self.wallpaperMode = [self currentTheme][@"mode"];
   BOOL wasVisible = self.panel.visible;
   CGFloat previousX = self.panel.frame.origin.x;
   NSScreen *screen = NSScreen.mainScreen;
@@ -603,6 +745,7 @@ static RiceActionLayout rice_action_layout(NSRect bounds, BOOL preview, BOOL sub
   }
 }
 - (void)close {
+  [self flushGhosttySettings];
   [self.panel orderOut:nil]; self.panel.alphaValue = 1;
 }
 - (void)windowDidResignKey:(NSNotification *)note { (void)note; if (self.panel.visible && !self.choosingVPN) [self close]; }
@@ -647,7 +790,7 @@ int main(int argc, char **argv) {
   @autoreleasepool {
     const char *config = getenv("CONFIG_DIR");
     directory = config && *config ? @(config) : [NSHomeDirectory() stringByAppendingPathComponent:@".config/sketchybar"];
-    if (argc == 2 && (!strcmp(argv[1], "--toggle") || !strcmp(argv[1], "--themes") || !strcmp(argv[1], "--wallpapers") || !strcmp(argv[1], "--logos") || !strcmp(argv[1], "--close")))
+    if (argc == 2 && (!strcmp(argv[1], "--toggle") || !strcmp(argv[1], "--themes") || !strcmp(argv[1], "--wallpapers") || !strcmp(argv[1], "--logos") || !strcmp(argv[1], "--terminal") || !strcmp(argv[1], "--close")))
       return rice_post(panelPort, @{@"SENDER":@(argv[1])}) ? 0 : 1;
     if (argc == 3 && !strcmp(argv[1], "--inspect"))
       return rice_post(panelPort, @{@"SENDER":@"--inspect", @"PATH":@(argv[2])}) ? 0 : 1;
@@ -699,6 +842,7 @@ int main(int argc, char **argv) {
               else if ([sender isEqual:@"--themes"]) [controller show:@"themes"];
               else if ([sender isEqual:@"--wallpapers"]) [controller show:@"wallpapers"];
               else if ([sender isEqual:@"--logos"]) [controller show:@"logos"];
+              else if ([sender isEqual:@"--terminal"]) [controller show:@"terminal"];
               else if ([sender isEqual:@"--toggle"]) {
                 if (controller.panel.visible) [controller close]; else [controller show:@"control"];
               }

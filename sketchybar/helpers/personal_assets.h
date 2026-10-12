@@ -20,12 +20,23 @@ static inline void rice_prepare_assets(NSString *config) {
 
 static inline NSMutableDictionary *rice_personal_preferences(NSString *config) {
   id saved = rice_json_file([rice_personal_directory(config) stringByAppendingPathComponent:@"personalization.json"]);
-  NSMutableDictionary *preferences = [@{@"logo":@"", @"tintLogo":@YES} mutableCopy];
+  NSMutableDictionary *preferences = [@{@"logo":@"", @"tintLogo":@YES, @"wallpapers":@{}, @"followAppearance":@NO} mutableCopy];
   if ([saved isKindOfClass:NSDictionary.class]) {
     NSString *logo = saved[@"logo"];
     if ([logo isKindOfClass:NSString.class] && [logo.lastPathComponent isEqual:logo] && ![logo hasPrefix:@"."])
       preferences[@"logo"] = logo;
     if ([saved[@"tintLogo"] isKindOfClass:NSNumber.class]) preferences[@"tintLogo"] = saved[@"tintLogo"];
+    if ([saved[@"followAppearance"] isKindOfClass:NSNumber.class]) preferences[@"followAppearance"] = saved[@"followAppearance"];
+    NSMutableDictionary *wallpapers = [NSMutableDictionary dictionary];
+    if ([saved[@"wallpapers"] isKindOfClass:NSDictionary.class]) {
+      for (NSString *mode in @[@"dark", @"light"]) {
+        NSString *name = saved[@"wallpapers"][mode];
+        if ([name isKindOfClass:NSString.class] && name.length &&
+            [name.lastPathComponent isEqual:name] && ![name hasPrefix:@"."])
+          wallpapers[mode] = name;
+      }
+    }
+    preferences[@"wallpapers"] = wallpapers;
   }
   return preferences;
 }

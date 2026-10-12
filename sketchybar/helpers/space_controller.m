@@ -241,7 +241,8 @@ static NSArray *renderPlan(NSArray *all, NSArray *windows) {
     // Keep empty desktops recognizable without an empty app-icon slot.
     NSUInteger appCount = icons.count;
     if (!icons.count) [icons addObject:@":desktop:"];
-    NSInteger labelWidth = 23;
+    NSInteger appInset = appCount > 1 ? RICE_SPACE_APP_INSET : 0;
+    NSInteger labelWidth = appCount > 1 ? rice_space_app_width(NO) + appInset : 23;
     [plan addObject:@{@"id":space[@"id"], @"index":space[@"index"], @"slot":slot,
       @"display":space[@"display"], @"visible":space[@"is-visible"], @"number":number,
       @"label":icons[0], @"apps":icons, @"appCount":@(appCount),
@@ -308,7 +309,8 @@ static void render(NSArray *all, BOOL force) {
       @"icon.padding_left=0", @"icon.padding_right=2", @"icon.drawing=on",
       [@"label=" stringByAppendingString:space[@"label"]],
       @"label.font=Rice App Icons:Regular:14.0", @"label.max_chars=0", @"label.align=center",
-      @"label.padding_left=0", @"label.padding_right=0", @"label.background.drawing=off",
+      [NSString stringWithFormat:@"label.padding_left=%d", [space[@"appCount"] integerValue] > 1 ? RICE_SPACE_APP_INSET : 0],
+      @"label.padding_right=0", @"label.background.drawing=off",
       [@"label.drawing=" stringByAppendingString:([space[@"label"] length] ? @"on" : @"off")],
       [@"label.width=" stringByAppendingString:[space[@"labelWidth"] description]],
       @"padding_left=0", @"padding_right=0", @"background.height=28", @"background.corner_radius=10",

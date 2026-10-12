@@ -14,11 +14,29 @@ reuse the helper, and it exits when the associated SketchyBar process exits.
 Logs are in `/tmp/sketchybar_native_motion_<uid>.log`.
 
 The launcher opens a native AppKit control center. Choose **Personalize your
-desktop** for the theme, wallpaper, and launcher-logo galleries. Personal images
+desktop** for the theme, wallpaper, launcher-logo galleries, and **Terminal**
+opacity/font-size sliders. Terminal settings live in the ignored `rice/ghostty.conf`
+override, and reload signals are coalesced while dragging. Ghostty's macOS opacity
+restart limitation is explained in the panel; sessions are never closed.
+Personal images
 live in `~/.config/rice/wallpapers/` and `~/.config/rice/logos/`; the app creates
 these folders automatically. Folder changes refresh the gallery without
-reloading SketchyBar. Wallpaper selection applies to the current desktop on the
-chosen display(s), using macOS's desktop-image API.
+reloading SketchyBar. Wallpaper selection applies to all Spaces and displays.
+**Light** and **Dark** assign the two images of a native appearance-aware HEIC;
+the gallery opens on the current appearance so new selections update its default.
+macOS owns the transition, with no theme-change polling or service restarts.
+**Static** uses one image for both appearances. Original artwork is never resized
+or overwritten. HEIC encoding runs on a separate queue so the gallery stays live.
+
+`appearance_wallpaper.h` validates the macOS 14+ wallpaper-store structure and
+updates only its global desktop entry. The public NSWorkspace setter disables
+Show on all Spaces, so it is not used here. Screensavers and dormant per-Space
+settings survive, a local backup is made, and only WallpaperAgent is refreshed
+when selecting different wallpaper artwork—not when changing themes.
+`native_wallpaper --pair DARK_FILENAME LIGHT_FILENAME` applies a private pair;
+`--build-pair` only encodes it, and `--inspect FILE` reads its frames and metadata.
+Encoding and preservation regressions: `python3 helpers/tests/wallpaper_test.py`
+from `sketchybar/` (hardware HEIC encoding needs a logged-in macOS session).
 
 PNG, SVG, and PDF are recommended for logos; transparent artwork works best
 with **Use theme color**. **Apple (default)** restores the standard launcher.

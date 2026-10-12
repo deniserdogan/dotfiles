@@ -2,7 +2,20 @@
 #pragma once
 #import <Foundation/Foundation.h>
 
-enum { RICE_STACK_VISIBLE = 3, RICE_SPACE_END_INSET = 4 };
+enum { RICE_STACK_VISIBLE = 3, RICE_SPACE_END_INSET = 4, RICE_SPACE_APP_INSET = 5 };
+
+static inline NSInteger rice_space_app_width(BOOL open) { return open ? 21 : 18; }
+
+static inline void rice_space_primary_layout(NSMutableArray *args, NSString *owner, NSDictionary *plan, BOOL open) {
+  BOOL multiple = [plan[@"appCount"] integerValue] > 1;
+  NSInteger slot = multiple ? rice_space_app_width(open) : 23;
+  NSInteger inset = multiple ? RICE_SPACE_APP_INSET : 0;
+  [args addObjectsFromArray:@[@"--set", owner,
+    [NSString stringWithFormat:@"width=%ld", [plan[@"iconWidth"] integerValue] + inset + slot],
+    // SketchyBar's fixed text width includes its padding.
+    [NSString stringWithFormat:@"label.width=%ld", inset + slot],
+    [NSString stringWithFormat:@"label.padding_left=%ld", inset], @"label.padding_right=0"]];
+}
 
 static inline NSString *rice_space_group_name(NSString *owner) {
   return [@"space_group." stringByAppendingString:[owner substringFromIndex:6]];

@@ -13,6 +13,9 @@ staging="$(mktemp -d /private/tmp/rice-build.XXXXXX)"
   "$directory/native_theme.m" -framework Foundation \
   -o "$staging/native_theme"
 /usr/bin/xcrun clang -O2 -Wall -Wextra -fobjc-arc \
+  "$directory/native_wallpaper.m" -framework AppKit -framework ImageIO \
+  -o "$staging/native_wallpaper"
+/usr/bin/xcrun clang -O2 -Wall -Wextra -fobjc-arc \
   "$directory/native_panel.m" -framework AppKit -framework QuartzCore -framework IOKit -framework SystemConfiguration -framework ImageIO \
   -o "$staging/RicePanel"
 mkdir -p "$directory/RicePanel.app/Contents/MacOS"
@@ -20,6 +23,7 @@ cp "$directory/panel-Info.plist" "$directory/RicePanel.app/Contents/Info.plist"
 mv "$staging/native_motion" "$directory/native_motion"
 mv "$staging/space_controller" "$directory/space_controller"
 mv "$staging/native_theme" "$directory/native_theme"
+mv "$staging/native_wallpaper" "$directory/native_wallpaper"
 mv "$staging/RicePanel" "$directory/RicePanel.app/Contents/MacOS/RicePanel"
 CONFIG_DIR="$(dirname "$directory")" "$directory/native_theme" --export-palettes
 rmdir "$staging"

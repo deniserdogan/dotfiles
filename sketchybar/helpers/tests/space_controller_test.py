@@ -97,7 +97,7 @@ class SpaceRendererTests(unittest.TestCase):
 
     def expansion(self, count, opened):
         data = {"space": {"id": 130, "apps": [":ghostty:"] * count,
-                           "appCount": count, "visible": True}, "open": opened}
+                           "appCount": count, "iconWidth": 17, "visible": True}, "open": opened}
         args = json.loads(subprocess.check_output([MOTION, "--plan-expansion"], input=json.dumps(data).encode()))
         items, current = {}, None
         for arg in args:
@@ -174,6 +174,28 @@ class SpaceRendererTests(unittest.TestCase):
         for index in (1, 2):
             name = f"space_app.130.{index}"
             self.assertEqual(int(opened[name]["width"]) - int(compact[name]["width"]), 3)
+
+    def test_primary_logo_and_children_share_the_same_pitch(self):
+        for count in (2, 3, 4, 9):
+            for opened, slot in ((False, 18), (True, 21)):
+                items = self.expansion(count, opened)
+                primary = items["space.130"]
+                label_width = int(primary["label.width"])
+                inset = int(primary["label.padding_left"])
+                width = int(primary["width"])
+                self.assertEqual(label_width - inset, slot)
+                self.assertEqual(width, 17 + label_width)
+                # Fixed text width includes padding; this is the glyph center
+                # calculated by SketchyBar's text_calculate_bounds/text_draw.
+                centers = [17 + (label_width + inset) / 2]
+                end = width
+                for index in range(1, count):
+                    child = items[f"space_app.130.{index}"]
+                    child_width = int(child["width"])
+                    if child_width:
+                        centers.append(end + child_width / 2)
+                    end += child_width
+                self.assertTrue(all(b-a == slot for a, b in zip(centers, centers[1:])))
 
     def test_native_palette_matches_existing_shell_colors(self):
         for mode in ("dark", "light"):

@@ -20,3 +20,6 @@ cursor-style-blink = false
 
 background-opacity = 0.9
 background-opacity-cells = false
+
+# Machine-local values written by the native customization sliders.
+config-file = ?../rice/ghostty.conf
