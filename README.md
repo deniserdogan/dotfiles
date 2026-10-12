@@ -1,286 +1,140 @@
-# macOS rice
+<div align="center">
 
-A keyboard-first macOS desktop with Yabai tiling, a floating SketchyBar,
-rounded window borders, Ghostty, and a modular Neovim IDE. Native helpers handle
-hover, Space transitions, and a theme coordinator; an AppKit control center
-brings the desktop controls together.
+# macOS dotfiles
 
-![Real desktop with SketchyBar, Ghostty, JankyBorders, and Neovim](screenshots/desktop-light.png)
+A keyboard-first desktop, with a native feel.
 
-| Xcode Light | Nordfox |
-| --- | --- |
-| ![Neovim in Xcode Light](screenshots/neovim-light.png) | ![Neovim in Nordfox](screenshots/neovim-dark.png) |
+Yabai tiling · SketchyBar · AppKit controls · Ghostty · Neovim
 
-These are actual desktop screenshots showing the first-run light/dark palettes.
-Personal wallpapers and custom launcher artwork are not distributed.
+[Install](docs/SETUP.md) · [Shortcuts](docs/KEYBINDINGS.md) · [Personalize](docs/PERSONALIZATION.md) · [Neovim](nvim/README.md)
 
-### Native theme picker
+</div>
 
-Fresh capture of the running AppKit theme picker, shown in Tokyo Night. The
-picker includes 18 coordinated palettes, with separate light and dark filters.
+![Native theme gallery and control center in Tokyo Night](screenshots/overview.png)
 
-<p align="center">
-  <img src="screenshots/theme-picker.png" alt="Native theme picker with palette previews and the selected Tokyo Night theme" width="740">
-</p>
+An integrated macOS setup for people who live between an editor, a terminal,
+and a browser. Keep your hands on the keyboard, your Spaces organized, and
+your applications in the same palette.
 
-## The desktop
+## A desktop that works together
 
-- **Useful Spaces:** numbered desktops keep their identity across monitors.
-  Missing desktops are created on demand; pressing the current number returns
-  to the previous desktop. Each pill shows compact application icons, up to
-  three with an overflow count, and expands on hover.
-- **Native interaction:** short, interruptible hover and width animations,
-  stable icon order, and atomic Space-strip updates. Desktop mutations run
-  separately from the pointer event loop.
-- **Control center:** an AppKit panel for system load, memory, storage, battery,
-  audio, displays, network/VPN status, and shortcuts to system settings.
-- **Personalization:** a native gallery with theme previews, wallpaper
-  thumbnails, and a configurable launcher logo.
-- **One palette across the stack:** 18 themes, including 10 light themes.
-  Selecting one updates SketchyBar, borders, Ghostty, and Neovim, and selects
-  the matching macOS light/dark appearance. Other apps follow macOS appearance
-  where they support it.
-- **Live telemetry:** CPU graph, RAM usage, network throughput, battery, volume,
-  clock, and a media island that disappears when nothing is playing.
-- **A working editor:** native LSP, completion, formatting, linting, Git,
-  debugging, tests, tasks, sessions, and sticky code context.
-  See the [Neovim guide](nvim/README.md).
+**Spaces with a memory.** Jump with `Cmd 1…9`. Missing desktops are created
+on demand; press the current number again to return to the previous Space.
+Numbers follow their desktops between displays—not Mission Control's changing
+indices. Compact app icons expand on hover, with an overflow count for busy Spaces.
 
-| Component | Configuration |
-| --- | --- |
-| [Yabai](https://github.com/asmvik/yabai) | [yabai/yabairc](yabai/yabairc) |
-| [skhd](https://github.com/asmvik/skhd) | [skhd/skhdrc](skhd/skhdrc) |
-| [SketchyBar](https://github.com/FelixKratz/SketchyBar) | [sketchybar/sketchybarrc](sketchybar/sketchybarrc) |
-| [JankyBorders](https://github.com/FelixKratz/JankyBorders) | [borders/bordersrc](borders/bordersrc) |
-| [Ghostty](https://github.com/ghostty-org/ghostty) | [ghostty/config.ghostty](ghostty/config.ghostty) |
-| [Neovim](https://neovim.io/) | [nvim/](nvim/) |
+**Motion without the detour.** Compiled native helpers handle hover, icon-strip
+updates, and Space coordination. Pointer events stay off the shell path;
+desktop operations run separately. Short transitions keep the bar responsive
+while preserving visual continuity.
 
-## Setup
+**One palette, end to end.** Pick a theme once to coordinate SketchyBar,
+window borders, Ghostty, Neovim, and macOS light/dark appearance. The native
+gallery remembers your preferred light and dark themes.
 
-Currently targets **Apple Silicon macOS with Homebrew at `/opt/homebrew`**.
-Tested on macOS Tahoe 26.5/26.6. Intel Macs and other platforms need path and
-platform changes; the installer deliberately rejects them rather than claiming
-support. Advanced desktop operations depend on Yabai's compatibility with your
-macOS version.
+**An editor ready for work.** A modular Neovim configuration with LSP,
+completion, formatting, Git, debugging, tests, tasks, sessions, and sticky
+code context. [Explore the editor →](nvim/README.md)
 
-Install [Homebrew](https://brew.sh/) and Apple's Command Line Tools
-(`xcode-select --install`) first. Then:
+## Your Mac, at a glance
+
+![Native control center with system health and quick access](screenshots/control-center.png)
+
+Click the launcher for CPU load, memory, battery, storage, display information,
+and detected VPN/proxy status. Open settings, Activity Monitor, applications,
+or your VPN client from the same panel.
+
+The bar keeps the everyday signals visible: a CPU graph, RAM usage, network
+throughput, battery, volume, and time. A media island appears while audio is playing.
+
+## Light themes deserve the same attention
+
+![Light theme gallery showing Catppuccin Latte, Rosé Pine Dawn, Xcode Light and more](screenshots/themes-light.png)
+
+**18 coordinated themes: 10 light, 8 dark.** Browse visual previews, filter by
+appearance, and apply with a click. `Ctrl + Left Option + Cmd + T` switches
+between your remembered pair; macOS appearance changes use the same coordinator.
+
+Bring your own wallpapers and launcher artwork. The galleries read local
+folders, refresh when files change, and keep personal images and preferences
+out of Git. Fresh installations use the standard Apple launcher.
+
+[Theme list, wallpapers, and custom logos →](docs/PERSONALIZATION.md)
+
+<sub>Showcase images render the actual AppKit views with sample system data and
+an opaque documentation backdrop. In-app palette thumbnails are illustrative,
+not desktop captures. No personal wallpapers or custom logos are included.
+[Reproduce the visuals](docs/media/README.md).</sub>
+
+## Get started
+
+Targets **Apple Silicon macOS**, with Homebrew at `/opt/homebrew` and Apple's
+Command Line Tools installed. Review the installer before running it:
 
 ```sh
 git clone https://github.com/deniserdogan/dotfiles.git ~/dotfiles
 cd ~/dotfiles
-
-# Review the installer and the proposed changes.
 less setup.sh
 ./setup.sh --dry-run
-
-# Install dependencies, build helpers, and link configs.
 ./setup.sh
 ```
 
-The installer:
+Setup installs dependencies, builds the native helpers, backs up conflicting
+configs, links the six components, and installs the app-icon font. It does
+**not** start services or change permissions, SIP, appearance, or wallpaper.
 
-1. Installs the [Brewfile](Brewfile) dependencies without requesting a blanket
-   upgrade of existing packages.
-2. Compiles the native helpers locally, **before** replacing any configs.
-3. Links `borders`, `ghostty`, `nvim`, `sketchybar`, `skhd`, and `yabai`
-   into `~/.config`. Conflicts—including broken symlinks—are moved into a
-   unique `~/.config/dotfiles-backup.*` directory, never deleted.
-4. Installs the bundled Rice App Icons font, preserving a different existing
-   copy in the same backup directory.
-5. Creates empty private wallpaper, logo, and cache folders.
-
-Running it again keeps correct links and identical fonts. A checkout directly
-at `~/.config` also works: the installer leaves those directories in place.
-Existing users of the old nested `.config/` repository layout should rerun setup
-after pulling.
-
-**Services are not started by default.** Setup does not change your wallpaper,
-logo, appearance, Accessibility permissions, SIP, or sudoers.
-Homebrew may still upgrade a dependency if an installation requires it.
-
-### macOS settings and permissions
-
-Before starting services:
-
-- In **Desktop & Dock → Mission Control**, enable **Displays have separate
-  Spaces** and disable **Automatically rearrange Spaces based on most recent
-  use**. Log out/in if macOS requests it.
-- Set the macOS menu bar to hide automatically so it does not overlap
-  SketchyBar. The setting is under **Menu Bar** or **Control Center**, depending
-  on your macOS version.
-- Allow Yabai and skhd under **Privacy & Security → Accessibility**. You may
-  need to launch each once to make it appear, then restart it after granting
-  access.
-- If Mission Control has conflicting `Cmd + number` shortcuts, disable or
-  reassign them under **Keyboard → Keyboard Shortcuts**.
-
-Now explicitly start/restart the desktop services:
+Follow the [setup guide](docs/SETUP.md) for macOS settings and Accessibility
+permissions, then explicitly start the services:
 
 ```sh
 ./setup.sh --skip-packages --start-services
 ./setup.sh --doctor
 ```
 
-Yabai starts JankyBorders from its config; do not also start a second Borders
-service. Open Ghostty and launch `nvim`; lazy.nvim and Mason bootstrap editor
-dependencies. Run `:ConfigHealth` and `:checkhealth` after the first install.
-Language tools may also need their runtimes, such as Node.js, Go, or Python;
-see the [editor toolchain guide](nvim/README.md).
+> Advanced Space creation, deletion, and movement require Yabai's scripting
+> addition. Depending on macOS, that involves partially disabling SIP—a security
+> tradeoff, not an automatic installation step. Read the
+> [requirements and limitations](docs/SETUP.md#advanced-space-operations) first.
 
-### Optional: advanced Space operations
+## Learn the essentials
 
-Basic tiling and many window actions work without a scripting addition.
-Creating/deleting/moving Spaces and some focus operations require Yabai's
-scripting addition and its additional permissions. On supported macOS
-versions this involves **partially disabling SIP**, a meaningful security
-tradeoff.
-
-The installer never does that for you. Follow the official
-[SIP documentation](https://github.com/asmvik/yabai/wiki/Disabling-System-Integrity-Protection)
-and [scripting-addition setup](https://github.com/asmvik/yabai/wiki/Installing-yabai-%28latest-release%29#configure-scripting-addition)
-for your exact macOS and Yabai version. Use the documented hash-pinned sudoers
-rule, not an unrestricted sudo grant, and refresh the hash after Yabai updates.
-Machine-specific loaders and sudoers files are excluded from this repository.
-
-## Personalize
-
-Click the top-left launcher, then **Personalize your desktop**.
-
-### Themes
-
-The gallery shows rendered palette previews and remembers one light and one
-dark theme. `Ctrl + Left Option + Cmd + T` toggles between those selections.
-Changing appearance in macOS Settings follows the same coordinator; no terminal
-restart is needed.
-
-Light: Catppuccin Latte, Rosé Pine Dawn, Xcode Light, Dayfox, Dawnfox, Tokyo Night
-Day, Kanagawa Lotus, Gruvbox Light, GitHub Light, and Everforest Light.
-
-Dark: Nordfox, Tokyo Night, Catppuccin Mocha, Gruvbox, Kanagawa, Rosé Pine,
-Carbonfox, and Catppuccin Macchiato.
-
-The [theme catalog](sketchybar/themes/catalog.json) is the source of truth.
-Ghostty uses 90% background opacity; Neovim's transparent background follows the
-terminal palette.
-
-### Wallpapers and launcher artwork
-
-The galleries can open their local folders:
-
-```text
-~/.config/rice/
-├── wallpapers/           your downloaded wallpapers
-├── logos/                your custom launcher artwork
-├── cache/                generated previews
-├── personalization.json  local wallpaper/logo preferences
-└── theme-selection.json  remembered light/dark themes
-```
-
-Folder changes refresh the gallery automatically. Wallpaper selection applies
-to the current desktop on the selected display(s). PNG, SVG, and PDF work well
-for logos; transparent artwork is best for the optional **Use theme color**
-tint. **Apple (default)** restores the standard launcher.
-
-Everything under `rice/` is ignored by Git, including artwork, previews, and
-preferences. A new installation starts with the Apple logo and does not receive
-any personal images. The picker reads local files; it does not upload them.
-
-## Keyboard controls
-
-`Option` below means **Left Option**. Right Option remains available to Ghostty
-for terminal Alt bindings. These are global shortcuts, so review
-[skhd/skhdrc](skhd/skhdrc) for conflicts with your apps.
+`Option` here means **Left Option**; Right Option stays available to the terminal.
 
 | Shortcut | Action |
 | --- | --- |
-| `Option H/J/K/L` | Focus left/down/up/right, with wraparound |
-| `Shift Option H/J/K/L` | Warp the window within the BSP tree |
-| `Ctrl Option H/J/K/L` | Resize an edge by 40 px |
-| `Option F` | Toggle Yabai zoom (not a macOS fullscreen Space) |
-| `Option Space` | Toggle floating |
-| `Option S` | Toggle split orientation |
-| `Shift Option S` | Stack the focused window, or detach it into its own tile |
-| `Option [ / ]` | Cycle stack members, wrapping at either end |
-| `Option R` / `Option B` | Rotate / balance layout |
-| `Shift Option X / Y` | Mirror layout |
-| `Cmd 1…9` | Focus a numbered Space; create missing desktops up to that number |
-| `Shift Cmd 1…9` | Move the focused window to a numbered Space |
-| `Shift Option N` | Create a Space on the focused display |
-| `Shift Option Backspace` | Delete the current Space; keep the last one per display |
-| `Cmd Option H/J/K/L` | Focus the display in that direction |
-| `Cmd Option M` | Cycle display focus |
-| `Shift Cmd Option H/J/K/L` | Move the current Space to that display |
-| `Shift Cmd Option B` | Move the current Space to the built-in display |
-| `Shift Option M` | Repeatedly cycle the current Space through connected displays |
-| `Cmd Shift S` | Select a screenshot area → clipboard; Esc cancels, Space selects a window |
-| `Ctrl Option Cmd T` | Toggle remembered light/dark themes |
-| `Ctrl Option Cmd S` | Reload SketchyBar |
-| `Ctrl Option Cmd R` | Restart Yabai |
+| `Option H / J / K / L` | Focus windows with wraparound |
+| `Cmd 1…9` | Jump to a Space; create missing desktops |
+| `Shift Cmd 1…9` | Send a window to a Space |
+| `Option F` | Zoom the focused tile |
+| `Shift Option S` | Stack / unstack a window |
+| `Option [ / ]` | Cycle through a stack |
+| `Shift Option M` | Move the Space through connected monitors |
+| `Ctrl Option Cmd T` | Switch light / dark theme |
 
-`Cmd Shift S` replaces apps' usual Save As binding. Option + left/right mouse
-drag moves/resizes a window. Pressing the current Space number again returns
-to the previous one. Semantic Space numbers follow a desktop between monitors,
-rather than referring to its temporary Mission Control index.
+[All shortcuts →](docs/KEYBINDINGS.md)
 
-For Neovim, `Space` is the leader key. `gcc` toggles a line comment and visual
-`gc` comments a selection. The complete keymaps and language configuration are
-in [nvim/README.md](nvim/README.md).
+## Make it yours
 
-## Maintenance and troubleshooting
+| Component | What it handles | Configuration |
+| --- | --- | --- |
+| [Yabai](https://github.com/asmvik/yabai) | Tiling, layouts, Spaces, displays | [yabairc](yabai/yabairc) |
+| [skhd](https://github.com/asmvik/skhd) | Global keyboard controls | [skhdrc](skhd/skhdrc) |
+| [SketchyBar](https://github.com/FelixKratz/SketchyBar) | Floating bar and live widgets | [sketchybarrc](sketchybar/sketchybarrc) |
+| [JankyBorders](https://github.com/FelixKratz/JankyBorders) | Focused-window outlines | [bordersrc](borders/bordersrc) |
+| [Ghostty](https://github.com/ghostty-org/ghostty) | Terminal, palette, transparency | [config.ghostty](ghostty/config.ghostty) |
+| [Neovim](https://neovim.io/) | Editor and language tooling | [Editor guide](nvim/README.md) |
 
-After pulling updates, rebuild helpers and reload the bar:
+The [theme catalog](sketchybar/themes/catalog.json) defines the shared palettes.
+The [native-helper guide](sketchybar/helpers/README.md) explains the interaction
+architecture. See [maintenance and troubleshooting](docs/MAINTENANCE.md) for
+updates, health checks, and recovery.
 
-```sh
-git pull --ff-only
-./setup.sh --skip-packages
-sketchybar --reload
-```
+## Credits & licenses
 
-If Yabai/skhd configs changed, use the explicit `--start-services` option too.
-The installer reports where any old configs were backed up. To undo a linked
-install, stop the services, move the new config symlinks aside, and restore the
-matching backup directories. Do not move a live `~/.config` checkout wholesale.
+Built on the projects above and the Neovim plugin authors in
+[lazy-lock.json](nvim/lazy-lock.json).
 
-| Symptom | Check |
-| --- | --- |
-| Hotkeys do nothing | skhd Accessibility permission; Secure Keyboard Entry and shortcut conflicts |
-| Windows do not tile | Yabai Accessibility permission; restart Yabai after granting it |
-| Space create/delete/move fails | macOS/Yabai compatibility, scripting addition, SIP, current sudoers hash |
-| Missing native helper | Run `./setup.sh --skip-packages` |
-| App icons are boxes | Install the bundled Rice App Icons and JetBrainsMono Nerd Font; log out/in if necessary |
-| Theme is out of sync | Reload SketchyBar, then run `~/.config/sketchybar/helpers/native_theme --sync` |
-| Bar missing or stale | Run `./setup.sh --doctor`; inspect SketchyBar/helper logs |
-| Neovim tooling missing | `:ConfigHealth`, `:MasonToolsInstall`, `:checkhealth`; check language runtimes |
-
-Layout spacing lives in [yabai/yabairc](yabai/yabairc); bar fonts, widgets, and
-geometry live in [sketchybar/sketchybarrc](sketchybar/sketchybarrc). App glyph
-overrides are in [icon_map.sh](sketchybar/plugins/icon_map.sh). The native helper
-architecture and local log locations are documented [here](sketchybar/helpers/README.md).
-
-### Checks
-
-The installer suite uses temporary roots and fake service commands. The default
-helper suite performs read-only checks; tests that change the desktop are opt-in.
-
-```sh
-bash -n setup.sh
-python3 -m unittest discover -s tests -p '*_test.py'
-python3 -m unittest discover -s sketchybar/helpers/tests -p '*_test.py'
-```
-
-Build the helpers before running their tests. Do not enable
-`RICE_THEME_LIVE_TESTS` during normal checks: that suite deliberately switches
-the running desktop through every theme.
-
-## Credits and licenses
-
-Built on [Yabai and skhd](https://github.com/asmvik),
-[SketchyBar and JankyBorders](https://github.com/FelixKratz),
-[Ghostty](https://github.com/ghostty-org/ghostty), [Neovim](https://neovim.io/),
-and the plugin authors represented in [lazy-lock.json](nvim/lazy-lock.json).
-
-Configuration: [MIT](LICENSE). Native helpers and the vendored SketchyBar IPC
-header: [GPL-3.0](sketchybar/helpers/vendor/LICENSE). The bundled app-icon font
-is derived from [sketchybar-app-font](https://github.com/kvndrsslr/sketchybar-app-font):
+Configuration: [MIT](LICENSE). Native helpers and vendored SketchyBar IPC:
+[GPL-3.0](sketchybar/helpers/vendor/LICENSE). The app-icon font derives from
+[sketchybar-app-font](https://github.com/kvndrsslr/sketchybar-app-font),
 [CC0-1.0](sketchybar/fonts/LICENSE).
