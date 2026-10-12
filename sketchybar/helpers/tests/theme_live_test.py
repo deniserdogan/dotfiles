@@ -32,6 +32,36 @@ def wait_for(predicate, timeout=8):
 
 @unittest.skipUnless(os.environ.get("RICE_THEME_LIVE_TESTS") == "1", "opt-in appearance test")
 class ThemeLiveTests(unittest.TestCase):
+    def test_appearance_toggle_restores_both_remembered_themes(self):
+        state_path = Path(f"/tmp/rice_theme_{os.getuid()}.json")
+        preferences = ROOT / "rice/theme-selection.json"
+        saved = json.loads(preferences.read_text())
+        original = json.loads(state_path.read_text())["id"]
+        catalog = {row["id"]: row for row in json.loads(subprocess.check_output([THEME, "--list"]))}
+
+        def matching(identifier):
+            if json.loads(state_path.read_text())["id"] != identifier:
+                return False
+            palette = json.loads(subprocess.check_output([THEME, "--plan", identifier]))
+            actual = json.loads(subprocess.check_output([BAR, "--query", "bar"]))
+            return actual["color"] == palette["BAR_COLOR"] and (ROOT / "ghostty/theme-mode").read_text() == f'theme = {catalog[identifier]["ghostty"]}\n'
+
+        try:
+            for mode in ("dark", "light"):
+                subprocess.run([THEME, "--select", saved[mode]], check=True)
+                wait_for(lambda: matching(saved[mode]))
+            for mode in ("dark", "light"):
+                subprocess.run([THEME, "--toggle"], check=True)
+                wait_for(lambda: matching(saved[mode]))
+                self.assertEqual(json.loads(preferences.read_text()), saved)
+            # --sync reloads preferences from disk, as a fresh service does.
+            subprocess.run([THEME, "--sync"], check=True)
+            wait_for(lambda: matching(saved["light"]))
+        finally:
+            subprocess.run([THEME, "--select", original], check=True)
+            wait_for(lambda: matching(original))
+        self.assertEqual(json.loads(preferences.read_text()), saved)
+
     def test_all_themes_sync_bar_editor_terminal_and_gallery(self):
         state_path = Path(f"/tmp/rice_theme_{os.getuid()}.json")
         preferences = ROOT / "rice/theme-selection.json"

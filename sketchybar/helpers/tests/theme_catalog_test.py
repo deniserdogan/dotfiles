@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -12,6 +13,22 @@ GHOSTTY = Path("/Applications/Ghostty.app/Contents/Resources/ghostty/themes")
 
 
 class ThemeCatalogTests(unittest.TestCase):
+    def test_all_themes_are_stably_grouped_dark_then_light(self):
+        listed = json.loads(subprocess.check_output([THEME, "--list"]))
+        expected = [row["id"] for mode in ("dark", "light")
+                    for row in CATALOG if row["mode"] == mode]
+        self.assertEqual([row["id"] for row in listed], expected)
+
+    def test_independent_theme_memory_survives_restart_and_write_failures(self):
+        # Compile the production persistence helpers against isolated fixtures.
+        # No theme service, appearance change, or real preference file is used.
+        with tempfile.TemporaryDirectory(prefix="rice-selection-test-", dir="/private/tmp") as temporary:
+            executable = Path(temporary) / "selection_test"
+            subprocess.run(["xcrun", "clang", "-O2", "-Wall", "-Wextra", "-fobjc-arc",
+                            str(Path(__file__).with_name("theme_selection_test.m")),
+                            "-framework", "Foundation", "-o", str(executable)], check=True)
+            subprocess.run([executable, ROOT / "sketchybar", temporary], check=True)
+
     def test_expanded_catalog_prioritizes_light_themes(self):
         self.assertEqual(len({row["id"] for row in CATALOG}), len(CATALOG))
         self.assertGreaterEqual(len(CATALOG), 18)
@@ -45,7 +62,6 @@ class ThemeCatalogTests(unittest.TestCase):
         self.assertEqual(subprocess.check_output(["git", "-C", ROOT, "ls-files", "--", "rice"], text=True), "")
 
     def test_malformed_catalog_is_rejected(self):
-        import tempfile
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "themes"
             path.mkdir()

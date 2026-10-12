@@ -30,7 +30,13 @@ static inline NSArray<NSDictionary *> *rice_themes(NSString *directory) {
     for (NSString *key in row[@"overrides"])
       if (!rice_matches(key, @"^[A-Z_]+$") || !rice_matches(row[@"overrides"][key], @"^0x[0-9a-fA-F]{8}$")) return nil;
   }
-  return [ids containsObject:@"nordfox"] && [ids containsObject:@"xcode-light"] ? rows : nil;
+  if (![ids containsObject:@"nordfox"] || ![ids containsObject:@"xcode-light"]) return nil;
+  // Keep authored order within each appearance, even when new themes are
+  // appended to the catalog. The All gallery always has one dark/light boundary.
+  NSMutableArray *grouped = [NSMutableArray arrayWithCapacity:[rows count]];
+  for (NSString *mode in @[@"dark", @"light"])
+    for (NSDictionary *row in rows) if ([row[@"mode"] isEqual:mode]) [grouped addObject:row];
+  return grouped;
 }
 
 static inline NSDictionary *rice_theme(NSArray *catalog, NSString *identifier) {
@@ -80,6 +86,22 @@ static inline NSMutableDictionary *rice_theme_selection(NSString *directory, NSA
   for (NSString *mode in @[@"dark", @"light"])
     if ([saved isKindOfClass:NSDictionary.class] && [rice_theme(catalog, saved[mode])[@"mode"] isEqual:mode]) selection[mode] = saved[mode];
   return selection;
+}
+
+static inline BOOL rice_remember_theme(NSString *directory, NSArray *catalog,
+    NSMutableDictionary *selection, NSString *identifier) {
+  NSDictionary *theme = rice_theme(catalog, identifier);
+  if (!theme) return NO;
+  NSMutableDictionary *next = [selection mutableCopy];
+  next[theme[@"mode"]] = identifier;
+  NSData *data = [NSJSONSerialization dataWithJSONObject:next options:NSJSONWritingSortedKeys error:NULL];
+  NSString *path = rice_selection_path(directory);
+  if (!data || ![NSFileManager.defaultManager createDirectoryAtPath:path.stringByDeletingLastPathComponent
+      withIntermediateDirectories:YES attributes:nil error:NULL]) return NO;
+  if (![[NSData dataWithContentsOfFile:path] isEqual:data] && ![data writeToFile:path atomically:YES]) return NO;
+  // Failed writes must not leave an in-memory choice that disappears on restart.
+  [selection setDictionary:next];
+  return YES;
 }
 
 static inline NSString *rice_theme_state_path(void) {

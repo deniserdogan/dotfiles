@@ -15,6 +15,11 @@ The gallery remembers one light and one dark theme. `Ctrl + Left Option + Cmd + 
 switches between those selections. Changes made through macOS Appearance settings
 use the same coordinator; no terminal restart is needed.
 
+**All** groups dark themes first, then light themes, preserving the order within
+each group. **Dark** and **Light** filter the gallery without changing appearance.
+Each chosen theme is saved immediately for its own appearance, independently
+of the other choice, and restored after service reloads or a restart.
+
 | Light · 10 | Dark · 8 |
 | --- | --- |
 | Catppuccin Latte | Nordfox |

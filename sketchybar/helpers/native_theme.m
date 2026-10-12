@@ -101,9 +101,6 @@ static void sync_theme(BOOL force) {
     [task launchAndReturnError:NULL];
   }
   committed = theme[@"id"];
-  NSString *preferences = rice_selection_path(directory);
-  [NSFileManager.defaultManager createDirectoryAtPath:[preferences stringByDeletingLastPathComponent] withIntermediateDirectories:YES attributes:nil error:NULL];
-  write_json(preferences, selection);
   notify(@"RiceThemeDidChange", @{@"id":committed, @"mode":mode});
   fprintf(stderr, "Theme committed: %s (%s)\n", committed.UTF8String, mode.UTF8String);
 }
@@ -123,13 +120,19 @@ static void select_theme(void) {
   [selectionLock unlock];
   NSDictionary *theme = rice_theme(catalog, identifier);
   if (!theme) return;
+  NSString *old = selection[theme[@"mode"]];
+  // Save the per-appearance choice at selection time, not after bar/terminal
+  // updates. A service restart or missed appearance notification cannot lose it.
+  if (!rice_remember_theme(directory, catalog, selection, identifier)) {
+    notify(@"RiceThemeApplyFailed", @{@"message":@"Could not save your theme choice. Check the rice folder permissions."}); return;
+  }
+  if (![system_mode() isEqual:theme[@"mode"]] && !execute([theme[@"mode"] isEqual:@"dark"] ? darkScript : lightScript)) {
+    if (!rice_remember_theme(directory, catalog, selection, old))
+      notify(@"RiceThemeApplyFailed", @{@"message":@"Could not restore the previous theme preference."});
+    return;
+  }
   if ([identifier isEqual:committed]) {
     notify(@"RiceThemeDidChange", @{@"id":committed, @"mode":theme[@"mode"]}); return;
-  }
-  NSString *old = selection[theme[@"mode"]];
-  selection[theme[@"mode"]] = identifier;
-  if (![system_mode() isEqual:theme[@"mode"]] && !execute([theme[@"mode"] isEqual:@"dark"] ? darkScript : lightScript)) {
-    selection[theme[@"mode"]] = old; return;
   }
   // Same-appearance selections do not emit a macOS appearance notification.
   sync_theme(NO);
@@ -216,7 +219,9 @@ int main(int argc, char **argv) {
             [selectionLock lock]; pendingSelection = @(env_get_value_for_key(event, "ID")); [selectionLock unlock];
           }
           dispatch_async(dispatch_get_main_queue(), ^{
-            if ([sender isEqual:@"--toggle"]) { if (atomic_exchange(&requests, 0) & 1) execute(toggleScript); }
+            if ([sender isEqual:@"--toggle"]) {
+              if ((atomic_exchange(&requests, 0) & 1) && execute(toggleScript)) sync_theme(NO);
+            }
             else if ([sender isEqual:@"--select"]) select_theme();
             else if ([sender isEqual:@"--rebind"] && pid > 1) { barPID = pid; committed = nil; }
             else sync_theme([sender isEqual:@"--sync"]);

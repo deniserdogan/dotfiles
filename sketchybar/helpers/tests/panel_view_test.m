@@ -65,6 +65,11 @@ int main(void) {
     controller.snapshot = YES;
     [controller show:@"themes"];
     check(controller.cards.count == controller.catalog.count, @"All filter shows every theme");
+    BOOL reachedLight = NO;
+    for (RiceButton *card in controller.cards) {
+      if ([card.theme[@"mode"] isEqual:@"light"]) reachedLight = YES;
+      else check(!reachedLight, @"All gallery groups every dark theme before the light themes");
+    }
     NSUInteger chosen = 0;
     for (RiceButton *card in controller.cards) chosen += card.chosen;
     check(chosen == 1, @"Exactly one active theme");
