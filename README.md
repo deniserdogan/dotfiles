@@ -14,6 +14,15 @@ brings the desktop controls together.
 These are actual desktop screenshots showing the first-run light/dark palettes.
 Personal wallpapers and custom launcher artwork are not distributed.
 
+### Native theme picker
+
+Fresh capture of the running AppKit theme picker, shown in Tokyo Night. The
+picker includes 18 coordinated palettes, with separate light and dark filters.
+
+<p align="center">
+  <img src="screenshots/theme-picker.png" alt="Native theme picker with palette previews and the selected Tokyo Night theme" width="740">
+</p>
+
 ## The desktop
 
 - **Useful Spaces:** numbered desktops keep their identity across monitors.
