@@ -2,20 +2,10 @@
 
 requested_theme="${THEME_MODE:-}"
 user_id="${UID:-$(/usr/bin/id -u)}"
-pending_file="/tmp/sketchybar_theme_pending_$user_id"
 state_file="/tmp/sketchybar_theme_mode_$user_id"
 
-# During a switch, every plugin must use the same requested palette even while
-# macOS's defaults database still reports the previous appearance.
-if [ -z "$requested_theme" ] && [ -r "$pending_file" ]; then
-  pending_theme="$(/bin/cat "$pending_file" 2>/dev/null)"
-  if [ "$pending_theme" = "dark" ] || [ "$pending_theme" = "light" ]; then
-    requested_theme="$pending_theme"
-  fi
-fi
-
-# Between theme events, the last committed bar state is authoritative. This
-# prevents Space and widget updates from repainting with a lagging system value.
+# The native appearance observer commits this state before notifying the bar
+# and editors. Widget scripts use that same palette, not a queued shell target.
 if [ -z "$requested_theme" ] && [ -r "$state_file" ]; then
   committed_theme="$(/bin/cat "$state_file" 2>/dev/null)"
   if [ "$committed_theme" = "dark" ] || [ "$committed_theme" = "light" ]; then
@@ -67,4 +57,11 @@ else
   PEACH=0xff9c4f20
   RED=0xffd12f1b
   MAUVE=0xffad3da4
+fi
+
+# Generated named palettes override only colours, never layout or opacity.
+# Original palettes above remain a safe fallback after /tmp is cleared.
+palette_file="/tmp/rice_palette_${user_id}_${THEME_MODE}.sh"
+if [ -r "$palette_file" ]; then
+  . "$palette_file"
 fi

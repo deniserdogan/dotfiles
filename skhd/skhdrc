@@ -99,9 +99,12 @@ shift + cmd - 9 : "$HOME/.config/yabai/scripts/move_window_to_space.sh" 9
 shift + lalt - n : "$HOME/.config/yabai/scripts/create_space.sh"
 shift + lalt - 0x33 : "$HOME/.config/yabai/scripts/destroy_space.sh"
 
+# Native region capture to the clipboard. Esc cancels; Space selects a window.
+shift + cmd - s : /usr/sbin/screencapture -i -c
+
 # Reload tools
 ctrl + lalt + cmd - r : yabai --restart-service
 ctrl + lalt + cmd - s : sketchybar --reload
 
 # Toggle macOS, Ghostty, Neovim, and SketchyBar between light and dark.
-ctrl + lalt + cmd - t : "$HOME/.config/skhd/scripts/toggle_theme.sh"
+ctrl + lalt + cmd - t : "$HOME/.config/sketchybar/helpers/native_theme" --toggle

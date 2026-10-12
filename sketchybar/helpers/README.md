@@ -13,6 +13,19 @@ the helper itself and falls back to shell handlers if startup fails. Reloads
 reuse the helper, and it exits when the associated SketchyBar process exits.
 Logs are in `/tmp/sketchybar_native_motion_<uid>.log`.
 
+The launcher opens a native AppKit control center. Choose **Personalize your
+desktop** for the theme, wallpaper, and launcher-logo galleries. Personal images
+live in `~/.config/rice/wallpapers/` and `~/.config/rice/logos/`; the app creates
+these folders automatically. Folder changes refresh the gallery without
+reloading SketchyBar. Wallpaper selection applies to the current desktop on the
+chosen display(s), using macOS's desktop-image API.
+
+PNG, SVG, and PDF are recommended for logos; transparent artwork works best
+with **Use theme color**. **Apple (default)** restores the standard launcher.
+Images, cached thumbnails, and preferences under `~/.config/rice/` are ignored
+by Git and are never uploaded by the picker. A fresh checkout uses the default
+Apple logo; custom artwork is strictly machine-local.
+
 `space_controller.m` owns desktop creation/deletion/focus and the Space strip.
 It is a separate compiled process, so desktop work never blocks hover. It uses
 one non-blocking BSD lock, yabai's local client protocol, Foundation JSON parsing,

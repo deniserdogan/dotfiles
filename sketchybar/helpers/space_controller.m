@@ -10,6 +10,7 @@
 #include <spawn.h>
 #include <errno.h>
 #include "vendor/sketchybar.h"
+#include "space_layout.h"
 
 extern char **environ;
 static NSString *root;
@@ -223,7 +224,10 @@ static NSArray *renderPlan(NSArray *all, NSArray *windows) {
       stack = MAX(stack, [window[@"stack-index"] integerValue]);
     }
     NSMutableArray *icons = [NSMutableArray array];
-    for (NSString *app in [[apps allObjects] sortedArrayUsingSelector:@selector(compare:)]) {
+    // Focus is indicated by the active-app widget, not by shuffling this pill.
+    // A deterministic order also survives desktop switches and query ordering.
+    NSArray *ordered = [[apps allObjects] sortedArrayUsingSelector:@selector(compare:)];
+    for (NSString *app in ordered) {
       if (!glyphs[app]) {
         NSData *data = run([root stringByAppendingPathComponent:@"sketchybar/plugins/icon_map.sh"], @[app]);
         glyphs[app] = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] ?: @":default:";
@@ -235,11 +239,13 @@ static NSArray *renderPlan(NSArray *all, NSArray *windows) {
     NSString *number = stack > 1 ? [NSString stringWithFormat:@"%@·%ld", slot, (long)stack] : slot;
     NSInteger iconWidth = MAX(17, (NSInteger)number.length * 9 + 2);
     // Keep empty desktops recognizable without an empty app-icon slot.
+    NSUInteger appCount = icons.count;
     if (!icons.count) [icons addObject:@":desktop:"];
-    NSInteger labelWidth = icons.count * 23;
+    NSInteger labelWidth = 23;
     [plan addObject:@{@"id":space[@"id"], @"index":space[@"index"], @"slot":slot,
       @"display":space[@"display"], @"visible":space[@"is-visible"], @"number":number,
-      @"label":[icons componentsJoinedByString:@"  "], @"labelWidth":@(labelWidth), @"iconWidth":@(iconWidth),
+      @"label":icons[0], @"apps":icons, @"appCount":@(appCount),
+      @"labelWidth":@(labelWidth), @"iconWidth":@(iconWidth),
       @"width":@(iconWidth + labelWidth)}];
   }
   if (changed) [[NSJSONSerialization dataWithJSONObject:@{@"version":version, @"glyphs":glyphs} options:0 error:NULL] writeToFile:glyphCache atomically:YES];
@@ -264,9 +270,16 @@ static void render(NSArray *all, BOOL force) {
   NSMutableSet *existing = [NSMutableSet set];
   for (NSDictionary *space in plan) {
     [live addObject:[@"space." stringByAppendingString:[space[@"id"] description]]];
+    [live addObject:[@"space_group." stringByAppendingString:[space[@"id"] description]]];
     [live addObject:[@"space_spacer." stringByAppendingString:[space[@"id"] description]]];
+    if ([space[@"appCount"] integerValue] > 1) {
+      [live addObject:[@"space_more." stringByAppendingString:[space[@"id"] description]]];
+      for (NSUInteger i = 1; i < [space[@"apps"] count]; i++)
+        [live addObject:[NSString stringWithFormat:@"space_app.%@.%lu", space[@"id"], i]];
+    }
   }
-  for (NSString *name in info[@"items"]) if ([name hasPrefix:@"space."] || [name hasPrefix:@"space_spacer."]) [existing addObject:name];
+  for (NSString *name in info[@"items"]) if ([name hasPrefix:@"space."] || [name hasPrefix:@"space_spacer."] ||
+      [name hasPrefix:@"space_app."] || [name hasPrefix:@"space_more."] || [name hasPrefix:@"space_group."]) [existing addObject:name];
   NSString *cache = [NSString stringWithFormat:@"/tmp/sketchybar_space_plan_%u.json", getuid()];
   NSData *saved = [NSData dataWithContentsOfFile:cache];
   id oldPlan = saved ? [NSJSONSerialization JSONObjectWithData:saved options:0 error:NULL] : nil;
@@ -277,7 +290,9 @@ static void render(NSArray *all, BOOL force) {
   NSString *previous = @"apple_spacer";
   for (NSDictionary *space in plan) {
     NSString *item = [@"space." stringByAppendingString:[space[@"id"] description]];
+    NSString *group = rice_space_group_name(item);
     NSString *spacer = [@"space_spacer." stringByAppendingString:[space[@"id"] description]];
+    NSMutableArray *members = [NSMutableArray arrayWithObject:item];
     BOOL added = ![existing containsObject:item];
     if (added) [args addObjectsFromArray:@[@"--add", @"space", item, @"left"]];
     BOOL visible = [space[@"visible"] boolValue];
@@ -292,13 +307,12 @@ static void render(NSArray *all, BOOL force) {
       [@"icon.width=" stringByAppendingString:[space[@"iconWidth"] description]], @"icon.align=right",
       @"icon.padding_left=0", @"icon.padding_right=2", @"icon.drawing=on",
       [@"label=" stringByAppendingString:space[@"label"]],
-      @"label.font=Rice App Icons:Regular:14.0", @"label.max_chars=0", @"label.align=left",
-      @"label.padding_left=2", @"label.padding_right=0", @"label.background.drawing=off",
+      @"label.font=Rice App Icons:Regular:14.0", @"label.max_chars=0", @"label.align=center",
+      @"label.padding_left=0", @"label.padding_right=0", @"label.background.drawing=off",
       [@"label.drawing=" stringByAppendingString:([space[@"label"] length] ? @"on" : @"off")],
       [@"label.width=" stringByAppendingString:[space[@"labelWidth"] description]],
       @"padding_left=0", @"padding_right=0", @"background.height=28", @"background.corner_radius=10",
-      @"background.drawing=on", @"background.border_width=1", @"background.shadow.drawing=off",
-      [@"background.color=" stringByAppendingString:fill], [@"background.border_color=" stringByAppendingString:outline],
+      @"background.drawing=off", @"background.border_width=0", @"background.shadow.drawing=off",
       [@"icon.color=" stringByAppendingString:iconColor], [@"label.color=" stringByAppendingString:labelColor],
       @"script=", @"mach_helper=com.denis.sketchybar.native_motion",
       [@"click_script=" stringByAppendingString:[NSString stringWithFormat:@"%@/yabai/scripts/focus_space.sh %@", root, space[@"slot"]]],
@@ -308,13 +322,71 @@ static void render(NSArray *all, BOOL force) {
     if (added) [args addObjectsFromArray:@[@"--set", item, @"width=0"]];
     [args addObjectsFromArray:@[@"--animate", @"sin", @"5", @"--set", item,
       [@"width=" stringByAppendingString:[space[@"width"] description]], @"--animate", @"sin", @"0"]];
+    [args addObjectsFromArray:@[@"--move", item, @"after", previous]];
+    previous = item;
+    if ([space[@"appCount"] integerValue] > 1) {
+      NSString *click = [NSString stringWithFormat:@"\"%@/yabai/scripts/focus_space.sh\" %@", root, space[@"slot"]];
+      for (NSUInteger i = 1; i < [space[@"apps"] count]; i++) {
+        NSString *child = [NSString stringWithFormat:@"space_app.%@.%lu", space[@"id"], i];
+        [members addObject:child];
+        BOOL addedChild = ![existing containsObject:child];
+        if (addedChild) [args addObjectsFromArray:@[@"--add", @"item", child, @"left"]];
+        BOOL shown = rice_space_child_visible(i, NO);
+        // A refresh must retarget the native collapse, not cancel it with a
+        // zero-duration width assignment after the hover helper starts it.
+        if (!addedChild) [args addObjectsFromArray:@[@"--animate", @"sin", @"7"]];
+        rice_space_child_layout(args, child, i, NO);
+        if (!addedChild) [args addObjectsFromArray:@[@"--animate", @"sin", @"0"]];
+        [args addObjectsFromArray:@[@"--set", child,
+          [@"icon=" stringByAppendingString:space[@"apps"][i]], @"icon.font=Rice App Icons:Regular:14.0",
+          @"icon.align=center", @"icon.padding_left=0", @"icon.padding_right=0",
+          [@"icon.color=" stringByAppendingString:shown ? iconColor : @"0x00000000"],
+          @"label.drawing=off", @"background.color=0x00000000", @"background.drawing=off", @"background.shadow.drawing=off",
+          @"script=", @"mach_helper=com.denis.sketchybar.native_motion", [@"click_script=" stringByAppendingString:click],
+          @"--subscribe", child, @"mouse.entered", @"mouse.exited", @"--move", child, @"after", previous]];
+        previous = child;
+      }
+      NSString *more = [@"space_more." stringByAppendingString:[space[@"id"] description]];
+      [members addObject:more];
+      BOOL addedBadge = ![existing containsObject:more];
+      if (addedBadge) [args addObjectsFromArray:@[@"--add", @"item", more, @"left"]];
+      BOOL badge = rice_space_overflow([space[@"appCount"] integerValue], NO) > 0;
+      if (!addedBadge) [args addObjectsFromArray:@[@"--animate", @"sin", @"7"]];
+      rice_space_badge_layout(args, more, [space[@"appCount"] integerValue], NO);
+      if (!addedBadge) [args addObjectsFromArray:@[@"--animate", @"sin", @"0"]];
+      [args addObjectsFromArray:@[@"--set", more, @"padding_left=0", @"padding_right=0",
+        @"icon.drawing=off",
+        @"label.font=JetBrainsMono Nerd Font Propo:Semibold:10.0", @"label.align=center",
+        @"label.padding_left=0", @"label.padding_right=0", @"label.drawing=on",
+        [@"label.color=" stringByAppendingString:badge ? labelColor : @"0x00000000"], @"background.height=22", @"background.corner_radius=7",
+        @"background.color=0x00000000", @"background.drawing=off", @"background.border_width=0", @"background.shadow.drawing=off",
+        @"script=", @"mach_helper=com.denis.sketchybar.native_motion", [@"click_script=" stringByAppendingString:click],
+        @"--subscribe", more, @"mouse.entered", @"mouse.exited", @"--move", more, @"after", previous]];
+      previous = more;
+    }
+    NSDictionary *oldRow = nil;
+    for (NSDictionary *row in oldPlan) if ([row[@"id"] isEqual:space[@"id"]]) { oldRow = row; break; }
+    // Keep the native bracket alive while its membership is unchanged, so its
+    // single background continuously follows the animated logo widths.
+    if (![existing containsObject:group] || ![oldRow[@"appCount"] isEqual:space[@"appCount"]]) {
+      if ([existing containsObject:group]) [args addObjectsFromArray:@[@"--remove", group]];
+      [args addObjectsFromArray:@[@"--add", @"bracket", group]];
+      [args addObjectsFromArray:members];
+    }
+    [args addObjectsFromArray:@[@"--set", group, @"updates=off", @"padding_left=0", @"padding_right=0",
+      @"background.drawing=on", @"background.height=28", @"background.corner_radius=10",
+      @"background.border_width=1", @"background.shadow.drawing=off",
+      [@"background.color=" stringByAppendingString:fill], [@"background.border_color=" stringByAppendingString:outline]]];
     if (![existing containsObject:spacer]) [args addObjectsFromArray:@[@"--add", @"item", spacer, @"left"]];
     [args addObjectsFromArray:@[@"--set", spacer, @"width=4", @"padding_left=0", @"padding_right=0",
       @"icon.drawing=off", @"label.drawing=off", @"background.drawing=off",
-      @"--move", item, @"after", previous, @"--move", spacer, @"after", item]];
+      @"--move", spacer, @"after", previous]];
     previous = spacer;
   }
-  if (bar(args)) [[NSJSONSerialization dataWithJSONObject:plan options:0 error:NULL] writeToFile:cache atomically:YES];
+  NSData *planData = [NSJSONSerialization dataWithJSONObject:plan options:0 error:NULL];
+  [args addObjectsFromArray:@[@"--trigger", @"native_space_plan",
+    [@"INFO=" stringByAppendingString:[[NSString alloc] initWithData:planData encoding:NSUTF8StringEncoding]]]];
+  if (bar(args)) [planData writeToFile:cache atomically:YES];
 }
 
 static NSArray *ensure(NSArray *all, NSUInteger target, NSString *source) {

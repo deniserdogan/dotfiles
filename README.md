@@ -1,560 +1,277 @@
 # macOS rice
 
-My keyboard-first macOS setup: Yabai BSP tiling, skhd hotkeys, a floating
-SketchyBar, JankyBorders, Ghostty, and a modular Neovim IDE. The entire desktop
-switches between Nordfox dark and Xcode Light with one shortcut.
+A keyboard-first macOS desktop with Yabai tiling, a floating SketchyBar,
+rounded window borders, Ghostty, and a modular Neovim IDE. Native helpers handle
+hover, Space transitions, and a theme coordinator; an AppKit control center
+brings the desktop controls together.
 
-> Tested on Apple Silicon with macOS Tahoe 26.5/26.6, Yabai 7.1, SketchyBar 2.24,
-> skhd 0.3.9, JankyBorders 1.9, Ghostty 1.3, and Neovim 0.12. The scripts use
-> `/opt/homebrew`, so Intel Mac users should replace it with `/usr/local`.
+![Real desktop with SketchyBar, Ghostty, JankyBorders, and Neovim](screenshots/desktop-light.png)
 
-![Light desktop with SketchyBar, Ghostty, JankyBorders, and Neovim](screenshots/desktop-light.png)
-
-| Xcode Light | Nordfox dark |
+| Xcode Light | Nordfox |
 | --- | --- |
-| ![Neovim Xcode Light theme](screenshots/neovim-light.png) | ![Neovim Nordfox dark theme](screenshots/neovim-dark.png) |
+| ![Neovim in Xcode Light](screenshots/neovim-light.png) | ![Neovim in Nordfox](screenshots/neovim-dark.png) |
 
-## What is included
+These are actual desktop screenshots showing the first-run light/dark palettes.
+Personal wallpapers and custom launcher artwork are not distributed.
 
-| Component | Purpose | Main config |
-| --- | --- | --- |
-| [Yabai](https://github.com/asmvik/yabai) | BSP tiling, Spaces, displays, stacking | `yabai/yabairc` |
-| [skhd](https://github.com/asmvik/skhd) | Global keyboard shortcuts | `skhd/skhdrc` |
-| [SketchyBar](https://github.com/FelixKratz/SketchyBar) | Spaces, app, media, CPU, RAM, network, audio, battery, clock | `sketchybar/sketchybarrc` |
-| [JankyBorders](https://github.com/FelixKratz/JankyBorders) | Crisp rounded focused-window border | `borders/bordersrc` |
-| [Ghostty](https://github.com/ghostty-org/ghostty) | Fast terminal with synchronized themes | `ghostty/config.ghostty` |
-| [Neovim](https://neovim.io/) | LSP, completion, formatting, linting, tests, DAP, Git, tasks, sessions | `nvim/` |
+## The desktop
 
-The SketchyBar is intentionally useful, not decorative:
+- **Useful Spaces:** numbered desktops keep their identity across monitors.
+  Missing desktops are created on demand; pressing the current number returns
+  to the previous desktop. Each pill shows compact application icons, up to
+  three with an overflow count, and expands on hover.
+- **Native interaction:** short, interruptible hover and width animations,
+  stable icon order, and atomic Space-strip updates. Desktop mutations run
+  separately from the pointer event loop.
+- **Control center:** an AppKit panel for system load, memory, storage, battery,
+  audio, displays, network/VPN status, and shortcuts to system settings.
+- **Personalization:** a native gallery with theme previews, wallpaper
+  thumbnails, and a configurable launcher logo.
+- **One palette across the stack:** 18 themes, including 10 light themes.
+  Selecting one updates SketchyBar, borders, Ghostty, and Neovim, and selects
+  the matching macOS light/dark appearance. Other apps follow macOS appearance
+  where they support it.
+- **Live telemetry:** CPU graph, RAM usage, network throughput, battery, volume,
+  clock, and a media island that disappears when nothing is playing.
+- **A working editor:** native LSP, completion, formatting, linting, Git,
+  debugging, tests, tasks, sessions, and sticky code context.
+  See the [Neovim guide](nvim/README.md).
 
-- semantic numbered Spaces that keep their number when moved between displays;
-- application icons for each Space and a stack-size indicator;
-- native hover feedback in both themes;
-- a clickable Apple control center with system, display, network, VPN, battery,
-  and volume details;
-- currently playing media with click-to-play/pause;
-- CPU graph, memory, live network throughput, volume, battery, and clock;
-- event-driven updates where possible, with lightweight polling only for live
-  telemetry.
+| Component | Configuration |
+| --- | --- |
+| [Yabai](https://github.com/asmvik/yabai) | [yabai/yabairc](yabai/yabairc) |
+| [skhd](https://github.com/asmvik/skhd) | [skhd/skhdrc](skhd/skhdrc) |
+| [SketchyBar](https://github.com/FelixKratz/SketchyBar) | [sketchybar/sketchybarrc](sketchybar/sketchybarrc) |
+| [JankyBorders](https://github.com/FelixKratz/JankyBorders) | [borders/bordersrc](borders/bordersrc) |
+| [Ghostty](https://github.com/ghostty-org/ghostty) | [ghostty/config.ghostty](ghostty/config.ghostty) |
+| [Neovim](https://neovim.io/) | [nvim/](nvim/) |
 
-## Install
+## Setup
 
-Read the scripts before running them. These are personal dotfiles and the setup
-changes window-management behavior across macOS.
+Currently targets **Apple Silicon macOS with Homebrew at `/opt/homebrew`**.
+Tested on macOS Tahoe 26.5/26.6. Intel Macs and other platforms need path and
+platform changes; the installer deliberately rejects them rather than claiming
+support. Advanced desktop operations depend on Yabai's compatibility with your
+macOS version.
 
-Existing installs: configs now live at the repository root, not inside
-`.config/`. If you linked the old layout, repeat step 3 after pulling.
-
-### 1. Install Homebrew and packages
-
-Install [Homebrew](https://brew.sh/), then:
+Install [Homebrew](https://brew.sh/) and Apple's Command Line Tools
+(`xcode-select --install`) first. Then:
 
 ```sh
 git clone https://github.com/deniserdogan/dotfiles.git ~/dotfiles
 cd ~/dotfiles
-brew bundle
+
+# Review the installer and the proposed changes.
+less setup.sh
+./setup.sh --dry-run
+
+# Install dependencies, build helpers, and link configs.
+./setup.sh
 ```
 
-The Brewfile installs the desktop tools, Ghostty, Neovim, `jq`,
-`nowplaying-cli`, common picker tools, and JetBrainsMono Nerd Font. Neovim
-installs its language-specific editor tooling through Mason on first launch.
+The installer:
 
-SketchyBar uses the bundled **Rice App Icons** font, derived from
-[sketchybar-app-font](https://github.com/kvndrsslr/sketchybar-app-font). Install
-it, then log out and back in if macOS does not notice the font immediately:
+1. Installs the [Brewfile](Brewfile) dependencies without requesting a blanket
+   upgrade of existing packages.
+2. Compiles the native helpers locally, **before** replacing any configs.
+3. Links `borders`, `ghostty`, `nvim`, `sketchybar`, `skhd`, and `yabai`
+   into `~/.config`. Conflicts—including broken symlinks—are moved into a
+   unique `~/.config/dotfiles-backup.*` directory, never deleted.
+4. Installs the bundled Rice App Icons font, preserving a different existing
+   copy in the same backup directory.
+5. Creates empty private wallpaper, logo, and cache folders.
+
+Running it again keeps correct links and identical fonts. A checkout directly
+at `~/.config` also works: the installer leaves those directories in place.
+Existing users of the old nested `.config/` repository layout should rerun setup
+after pulling.
+
+**Services are not started by default.** Setup does not change your wallpaper,
+logo, appearance, Accessibility permissions, SIP, or sudoers.
+Homebrew may still upgrade a dependency if an installation requires it.
+
+### macOS settings and permissions
+
+Before starting services:
+
+- In **Desktop & Dock → Mission Control**, enable **Displays have separate
+  Spaces** and disable **Automatically rearrange Spaces based on most recent
+  use**. Log out/in if macOS requests it.
+- Set the macOS menu bar to hide automatically so it does not overlap
+  SketchyBar. The setting is under **Menu Bar** or **Control Center**, depending
+  on your macOS version.
+- Allow Yabai and skhd under **Privacy & Security → Accessibility**. You may
+  need to launch each once to make it appear, then restart it after granting
+  access.
+- If Mission Control has conflicting `Cmd + number` shortcuts, disable or
+  reassign them under **Keyboard → Keyboard Shortcuts**.
+
+Now explicitly start/restart the desktop services:
 
 ```sh
-mkdir -p ~/Library/Fonts
-cp sketchybar/fonts/rice-app-icons.ttf ~/Library/Fonts/
+./setup.sh --skip-packages --start-services
+./setup.sh --doctor
 ```
 
-The bar and Space shortcuts require native helpers. Install Apple's
-Command Line Tools if needed (`xcode-select --install`), then build them in the
-checkout before starting services:
+Yabai starts JankyBorders from its config; do not also start a second Borders
+service. Open Ghostty and launch `nvim`; lazy.nvim and Mason bootstrap editor
+dependencies. Run `:ConfigHealth` and `:checkhealth` after the first install.
+Language tools may also need their runtimes, such as Node.js, Go, or Python;
+see the [editor toolchain guide](nvim/README.md).
 
-```sh
-sh sketchybar/helpers/build.sh
+### Optional: advanced Space operations
+
+Basic tiling and many window actions work without a scripting addition.
+Creating/deleting/moving Spaces and some focus operations require Yabai's
+scripting addition and its additional permissions. On supported macOS
+versions this involves **partially disabling SIP**, a meaningful security
+tradeoff.
+
+The installer never does that for you. Follow the official
+[SIP documentation](https://github.com/asmvik/yabai/wiki/Disabling-System-Integrity-Protection)
+and [scripting-addition setup](https://github.com/asmvik/yabai/wiki/Installing-yabai-%28latest-release%29#configure-scripting-addition)
+for your exact macOS and Yabai version. Use the documented hash-pinned sudoers
+rule, not an unrestricted sudo grant, and refresh the hash after Yabai updates.
+Machine-specific loaders and sudoers files are excluded from this repository.
+
+## Personalize
+
+Click the top-left launcher, then **Personalize your desktop**.
+
+### Themes
+
+The gallery shows rendered palette previews and remembers one light and one
+dark theme. `Ctrl + Left Option + Cmd + T` toggles between those selections.
+Changing appearance in macOS Settings follows the same coordinator; no terminal
+restart is needed.
+
+Light: Catppuccin Latte, Rosé Pine Dawn, Xcode Light, Dayfox, Dawnfox, Tokyo Night
+Day, Kanagawa Lotus, Gruvbox Light, GitHub Light, and Everforest Light.
+
+Dark: Nordfox, Tokyo Night, Catppuccin Mocha, Gruvbox, Kanagawa, Rosé Pine,
+Carbonfox, and Catppuccin Macchiato.
+
+The [theme catalog](sketchybar/themes/catalog.json) is the source of truth.
+Ghostty uses 90% background opacity; Neovim's transparent background follows the
+terminal palette.
+
+### Wallpapers and launcher artwork
+
+The galleries can open their local folders:
+
+```text
+~/.config/rice/
+├── wallpapers/           your downloaded wallpapers
+├── logos/                your custom launcher artwork
+├── cache/                generated previews
+├── personalization.json  local wallpaper/logo preferences
+└── theme-selection.json  remembered light/dark themes
 ```
 
-Helper binaries are built locally and ignored by Git.
+Folder changes refresh the gallery automatically. Wallpaper selection applies
+to the current desktop on the selected display(s). PNG, SVG, and PDF work well
+for logos; transparent artwork is best for the optional **Use theme color**
+tint. **Apple (default)** restores the standard launcher.
 
-### 2. Configure macOS
+Everything under `rice/` is ignored by Git, including artwork, previews, and
+preferences. A new installation starts with the Apple logo and does not receive
+any personal images. The picker reads local files; it does not upload them.
 
-In **System Settings → Desktop & Dock**:
+## Keyboard controls
 
-- enable **Displays have separate Spaces**;
-- disable **Automatically rearrange Spaces based on most recent use**;
-- enable **Show Items On Desktop**;
-- set **Click wallpaper to reveal Desktop** to **Only in Stage Manager**.
-
-In **System Settings → Control Center**, set **Automatically hide and show the
-menu bar** to **Always**. SketchyBar replaces it.
-
-On first launch, allow both Yabai and skhd under **Privacy & Security →
-Accessibility**. Restart each service after granting access.
-
-### 3. Link the configs
-
-If the repository itself is checked out at `~/.config`, skip this section:
-the files are already in their live locations.
-
-Back up any existing configuration first:
-
-```sh
-mkdir -p ~/.config
-stamp="$(date +%Y%m%d-%H%M%S)"
-
-for name in borders ghostty nvim sketchybar skhd yabai; do
-  if [ -e "$HOME/.config/$name" ] || [ -L "$HOME/.config/$name" ]; then
-    mv "$HOME/.config/$name" "$HOME/.config/$name.backup-$stamp"
-  fi
-  ln -s "$HOME/dotfiles/$name" "$HOME/.config/$name"
-done
-
-chmod +x ~/.config/borders/bordersrc
-chmod +x ~/.config/yabai/yabairc ~/.config/yabai/scripts/*.sh
-chmod +x ~/.config/sketchybar/sketchybarrc ~/.config/sketchybar/plugins/*.sh
-chmod +x ~/.config/skhd/scripts/*.sh
-```
-
-If you cloned somewhere other than `~/dotfiles`, change the symlink source.
-Using whole-directory symlinks keeps edits in the repository automatically.
-
-### 4. Decide whether to enable Yabai's scripting addition
-
-Basic window tiling works with normal Accessibility permission. This rice also
-uses advanced Space operations—create, destroy, focus, and move Spaces—which
-require Yabai's scripting addition and therefore a partial reduction of System
-Integrity Protection.
-
-This is a real security tradeoff. Read Yabai's current
-[SIP instructions](https://github.com/asmvik/yabai/wiki/Disabling-System-Integrity-Protection)
-and
-[scripting-addition setup](https://github.com/asmvik/yabai/wiki/Installing-yabai-%28latest-release%29#configure-scripting-addition)
-before deciding.
-
-After following the official SIP instructions, generate a sudoers rule tied to
-your username, Yabai path, and the exact hash of the installed binary:
-
-```sh
-echo "$(whoami) ALL=(root) NOPASSWD: sha256:$(shasum -a 256 "$(which yabai)" | cut -d ' ' -f 1) $(which yabai) --load-sa" \
-  | sudo tee /private/etc/sudoers.d/yabai
-```
-
-Regenerate that rule every time Yabai is upgraded. The repository deliberately
-does not ship a `yabai.sudoers` file because another user's username, binary
-path, and hash would be wrong.
-
-For the historical macOS 26.6 compatibility workaround, see
-[the native scripting-addition note](yabai/native-fix/README.md).
-The loader hook falls back to the Homebrew binary when no side-by-side loader
-is installed. Machine-specific installers and patched binaries are not shipped.
-
-### 5. Start everything
-
-```sh
-yabai --start-service
-skhd --start-service
-brew services start sketchybar
-```
-
-JankyBorders starts from `yabairc`, so do not also start it as a separate
-service. Open Ghostty and then Neovim:
-
-```sh
-nvim
-```
-
-On the first Neovim launch, lazy.nvim installs plugins and Mason installs the
-configured editor tools. Let both finish, restart Neovim, then run:
-
-```vim
-:checkhealth
-:ConfigHealth
-```
-
-## Yabai and macOS shortcuts
-
-`Alt` means the left Option key (`lalt`). Directions follow Vim:
-`H` left, `J` down, `K` up, `L` right.
-
-### Focus, move, and resize windows
+`Option` below means **Left Option**. Right Option remains available to Ghostty
+for terminal Alt bindings. These are global shortcuts, so review
+[skhd/skhdrc](skhd/skhdrc) for conflicts with your apps.
 
 | Shortcut | Action |
 | --- | --- |
-| `Alt H/J/K/L` | Focus the window left/down/up/right |
-| `Shift Alt H/J/K/L` | Warp the focused window left/down/up/right in the BSP tree |
-| `Ctrl Alt H/J/K/L` | Resize the focused edge by 40 px |
-| `Alt F` | Toggle native-looking zoom fullscreen |
-| `Alt Space` | Toggle floating |
-| `Alt S` | Toggle the next split orientation |
-| `Alt + left mouse drag` | Move a window |
-| `Alt + right mouse drag` | Resize a window |
+| `Option H/J/K/L` | Focus left/down/up/right, with wraparound |
+| `Shift Option H/J/K/L` | Warp the window within the BSP tree |
+| `Ctrl Option H/J/K/L` | Resize an edge by 40 px |
+| `Option F` | Toggle Yabai zoom (not a macOS fullscreen Space) |
+| `Option Space` | Toggle floating |
+| `Option S` | Toggle split orientation |
+| `Shift Option S` | Stack the focused window, or detach it into its own tile |
+| `Option [ / ]` | Cycle stack members, wrapping at either end |
+| `Option R` / `Option B` | Rotate / balance layout |
+| `Shift Option X / Y` | Mirror layout |
+| `Cmd 1…9` | Focus a numbered Space; create missing desktops up to that number |
+| `Shift Cmd 1…9` | Move the focused window to a numbered Space |
+| `Shift Option N` | Create a Space on the focused display |
+| `Shift Option Backspace` | Delete the current Space; keep the last one per display |
+| `Cmd Option H/J/K/L` | Focus the display in that direction |
+| `Cmd Option M` | Cycle display focus |
+| `Shift Cmd Option H/J/K/L` | Move the current Space to that display |
+| `Shift Cmd Option B` | Move the current Space to the built-in display |
+| `Shift Option M` | Repeatedly cycle the current Space through connected displays |
+| `Cmd Shift S` | Select a screenshot area → clipboard; Esc cancels, Space selects a window |
+| `Ctrl Option Cmd T` | Toggle remembered light/dark themes |
+| `Ctrl Option Cmd S` | Reload SketchyBar |
+| `Ctrl Option Cmd R` | Restart Yabai |
 
-Directional focus is smarter than a plain Yabai command: it handles zoomed
-windows, stacks, and wraparound candidates without leaving the keyboard.
+`Cmd Shift S` replaces apps' usual Save As binding. Option + left/right mouse
+drag moves/resizes a window. Pressing the current Space number again returns
+to the previous one. Semantic Space numbers follow a desktop between monitors,
+rather than referring to its temporary Mission Control index.
 
-### Stacks and layout
+For Neovim, `Space` is the leader key. `gcc` toggles a line comment and visual
+`gc` comments a selection. The complete keymaps and language configuration are
+in [nvim/README.md](nvim/README.md).
 
-| Shortcut | Action |
-| --- | --- |
-| `Shift Alt S` | Add the focused window to a stack, or pull it back into BSP |
-| `Alt [` | Focus the previous member of the current stack, wrapping around |
-| `Alt ]` | Focus the next member of the current stack, wrapping around |
-| `Alt R` | Rotate the current BSP tree 90° |
-| `Alt B` | Balance the current BSP tree |
-| `Shift Alt X` | Mirror the current layout on the x-axis |
-| `Shift Alt Y` | Mirror the current layout on the y-axis |
+## Maintenance and troubleshooting
 
-### Displays
-
-| Shortcut | Action |
-| --- | --- |
-| `Cmd Alt H/J/K/L` | Focus the display left/down/up/right |
-| `Cmd Alt M` | Cycle focus through connected displays |
-| `Shift Cmd Alt H/J/K/L` | Move the current Space to the display in that direction |
-| `Shift Cmd Alt B` | Move the current Space to the built-in display |
-| `Shift Alt M` | Cycle the current Space through every display |
-
-The entire Space moves, not just one window. Its semantic number follows it, and
-SketchyBar rebuilds the Space pills after topology changes.
-
-### Semantic Spaces
-
-| Shortcut | Action |
-| --- | --- |
-| `Cmd 1` … `Cmd 9` | Focus Space 1 … 9; create missing desktops up to that number |
-| `Shift Cmd 1` … `Shift Cmd 9` | Move the focused window to Space 1 … 9, creating missing desktops |
-| `Shift Alt N` | Create a Space on the focused display |
-| `Shift Alt Backspace` | Destroy the focused Space |
-
-The first run creates `yabai/space_roles.tsv`. It maps stable Space
-identities to `slot.N` labels and is intentionally ignored by Git because it is
-machine state. When a Space moves to another display, `Cmd N` still follows the
-role instead of its temporary Mission Control index.
-
-Missing desktops are created on the focused display. Press the current
-desktop's shortcut again to return to the previous desktop. Deletion moves to
-a neighboring desktop; the last desktop on each display is protected.
-
-### Reload and theme
-
-| Shortcut | Action |
-| --- | --- |
-| `Ctrl Alt Cmd R` | Restart Yabai |
-| `Ctrl Alt Cmd S` | Reload SketchyBar |
-| `Ctrl Alt Cmd T` | Toggle macOS, Ghostty, Neovim, and SketchyBar light/dark themes |
-
-The theme switch is serialized and debounced, so repeated key presses settle on
-one final theme without leaving the bar and Neovim out of sync.
-
-## SketchyBar mouse actions
-
-| Item | Click behavior |
-| --- | --- |
-| Apple logo | Toggle the custom control-center popup |
-| Space number | Focus that semantic Space |
-| Media island | Play/pause current media |
-| CPU or memory | Open Activity Monitor |
-| Volume | Toggle mute |
-| Volume slider | Set output volume |
-| Clock | Open Calendar |
-| Control-center rows | Open their matching system panel or application where configured |
-
-## Neovim shortcuts
-
-`<leader>` and `<localleader>` are both `Space`. Press `<leader>?` for
-buffer-local mappings or pause after `Space` to let which-key show the available
-groups.
-
-The hierarchy is: `b` buffers, `c` code/LSP, `d` debugger, `f` find, `g` Git,
-`p` projects/sessions, `r` tasks, `s` search/symbols, `t` tests/toggles, `u`
-UI, `v` windows, and `x` diagnostics/Trouble.
-
-### Editing and navigation
-
-| Mapping | Modes | Action |
-| --- | --- | --- |
-| `J` | normal | Join lines without moving the cursor |
-| `Y` | normal | Yank to end of line |
-| `n` / `N` | normal | Next/previous search result, open folds, center |
-| `<C-d>` / `<C-u>` | normal | Half-page down/up and center |
-| `<` / `>` | visual | Indent and keep the selection |
-| `J` / `K` | visual | Move selected lines down/up |
-| `p` | visual | Paste without replacing the unnamed register |
-| `,` / `.` / `;` | insert | Insert punctuation with an undo breakpoint |
-| `q` | selected utility buffers | Close the utility window |
-
-### Files, projects, buffers, windows, and terminals
-
-| Mapping | Action |
-| --- | --- |
-| `<leader>w` / `<leader>W` | Save current file / all files |
-| `<leader>q` / `<leader>Q` | Quit current window / save all and quit Neovim |
-| `<leader><space>` | Smart project file picker |
-| `<leader>ff` / `<leader>fg` | Find files / live grep in the project root |
-| `<leader>fb` / `<leader>bl` | Buffer picker |
-| `<leader>fr` / `<leader>fp` | Recent files / projects |
-| `<leader>fc` / `<leader>fh` | Command history / help tags |
-| `<leader>e` | Project-root explorer |
-| `<leader>bd` / `<leader>bo` | Delete current / all other buffers without destroying layouts |
-| `<leader>bn` / `<leader>bp` | Next / previous buffer |
-| `<C-h/j/k/l>` | Move across splits in normal and terminal modes |
-| `<Esc><Esc>` | Leave terminal mode |
-| `<leader>v=` | Equalize splits |
-| `<leader>v+` / `<leader>v-` | Increase / decrease height by four |
-| `<leader>v>` / `<leader>v<` | Increase / decrease width by four |
-| `<leader>vr` | Rotate windows |
-| `<leader>vH/J/K/L` | Move the window to the far left/bottom/top/right |
-| `<leader>ut` / `<leader>uT` | Toggle project float / open project bottom terminal |
-
-### LSP, code, formatting, and linting
-
-These mappings appear for buffers with an attached LSP server.
-
-| Mapping | Action |
-| --- | --- |
-| `gd` / `gD` | Definition / declaration |
-| `gri` / `grr` / `grt` | Implementation / references / type definition |
-| `K` / `gK` | Hover / signature help |
-| `<leader>ca` | Code action in normal or visual mode |
-| `<leader>cA` | All source actions |
-| `<leader>cO` / `<leader>cF` / `<leader>cU` | Organize imports / fix all / remove unused imports |
-| `<leader>cr` | Rename symbol |
-| `<leader>cs` / `<leader>cS` | Document / workspace symbols |
-| `<leader>ci` / `<leader>co` | Incoming / outgoing calls |
-| `<leader>ck` | Signature help |
-| `<leader>cwa` / `<leader>cwr` / `<leader>cwl` | Add / remove / list workspace folders |
-| `<leader>cI` / `<leader>cR` | Inspect / restart LSP clients |
-| `<leader>cm` | Open Mason |
-| `<leader>cf` | Asynchronous format in normal or visual mode |
-| `<leader>cl` | Run the selected linter |
-| `<leader>cE` | Fix the current file with project ESLint |
-| `<leader>th` / `<leader>ts` | Toggle buffer inlay hints / semantic tokens |
-| `<leader>cn` / `<leader>cN` | Swap with next / previous argument |
-
-### Diagnostics, lists, and Trouble
-
-| Mapping | Action |
-| --- | --- |
-| `]d` / `[d` | Next / previous diagnostic |
-| `]e` / `[e` | Next / previous error |
-| `]w` / `[w` | Next / previous warning |
-| `<leader>cd` | Diagnostic under the cursor |
-| `<leader>cD` | Current-buffer diagnostics in the location list |
-| `<leader>td` | Toggle diagnostics globally |
-| `<leader>tv` | Toggle current-line inline diagnostic text |
-| `<leader>uD` | Toggle diagnostic signs |
-| `]q` / `[q` | Next / previous quickfix item, wrapping |
-| `]l` / `[l` | Next / previous location-list item, wrapping |
-| `<leader>xx` / `<leader>xX` | Workspace / current-buffer diagnostics in Trouble |
-| `<leader>xq` / `<leader>xl` | Quickfix / location list in Trouble |
-| `<leader>xs` / `<leader>xr` | Document symbols / LSP references in Trouble |
-
-### Git
-
-| Mapping | Action |
-| --- | --- |
-| `]h` / `[h` | Next / previous hunk |
-| `<leader>gs` | Stage/unstage hunk; stage selection in visual mode |
-| `<leader>gr` | Reset hunk; reset selection in visual mode |
-| `<leader>gS` / `<leader>gp` | Stage buffer / preview hunk |
-| `<leader>gb` / `<leader>gB` | Full line blame / toggle current-line blame |
-| `<leader>gd` / `<leader>gq` | Diff current file / repository hunks in quickfix |
-| `ih` | Select hunk in operator-pending or visual mode |
-| `<leader>gD` / `<leader>gC` | Open / close Diffview |
-| `<leader>gh` / `<leader>gH` | File / repository history |
-| `<leader>gg` | Lazygit at the Git or project root |
-| `]x` / `[x` | Next / previous conflict in Diffview |
-| `<leader>gco/gct/gcb/gca/gcn` | Choose ours/theirs/base/all/none for a conflict |
-
-### Testing
-
-| Mapping | Action |
-| --- | --- |
-| `<leader>tn` | Run nearest test |
-| `<leader>tf` / `<leader>tp` | Run current file / package or directory |
-| `<leader>ta` | Run all project tests |
-| `<leader>tl` | Run last test |
-| `<leader>tD` | Debug nearest test through DAP |
-| `<leader>to` / `<leader>tO` | Open last output / toggle output panel |
-| `<leader>tu` | Toggle test summary |
-| `<leader>tS` | Stop test interactively |
-| `]T` / `[T` | Next / previous failed test and center |
-
-### Debugging
-
-| Mapping | Action |
-| --- | --- |
-| `<leader>dc` | Start or continue |
-| `<leader>db` / `<leader>dB` / `<leader>dl` | Breakpoint / conditional breakpoint / log point |
-| `<leader>do` / `<leader>di` / `<leader>dO` | Step over / into / out |
-| `<leader>dC` / `<leader>dR` | Run to cursor / restart frame |
-| `<leader>dL` / `<leader>dp` | Run last configuration / pause |
-| `<leader>dt` | Terminate |
-| `<leader>dr` / `<leader>du` | Toggle REPL / DAP UI |
-| `<leader>ds` / `<leader>de` | Inspect scopes / evaluate normal or visual selection |
-| `<leader>dk` / `<leader>dj` | Move up / down the stack |
-| `]b` / `[b` | Next / previous breakpoint across buffers |
-
-### Tasks and sessions
-
-| Mapping | Action |
-| --- | --- |
-| `<leader>rr` | Choose an Overseer template |
-| `<leader>rb/rt/rl/rf` | Detected build/test/lint/format task |
-| `<leader>rp` | Choose a package script |
-| `<leader>rR` / `<leader>ro` | Rerun / open output of latest task |
-| `<leader>rh` / `<leader>ra` | Task history / task action |
-| `<leader>pr` / `<leader>pc` | Restore project / current-directory session |
-| `<leader>pl` / `<leader>ps` | Restore last / select session |
-| `<leader>pw` / `<leader>pd` | Save session / stop persistence |
-
-Task detection supports Make, Go, Python, npm, pnpm, Yarn, and Bun. Sessions
-are scoped to the project root and Git branch.
-
-### Treesitter, TODOs, UI, and completion
-
-| Mapping | Modes | Action |
-| --- | --- | --- |
-| `<C-Space>` / `<BS>` | normal/visual / visual | Select parent / child syntax node |
-| `af` / `if` | visual, operator | Around / inside function |
-| `ac` / `ic` | visual, operator | Around / inside class |
-| `aa` / `ia` | visual, operator | Around / inside argument |
-| `]m` / `[m` | normal, visual, operator | Next / previous function start |
-| `]M` / `[M` | normal, visual, operator | Next / previous function end |
-| `]]` / `[[` | normal, visual, operator | Next / previous class start |
-| `]t` / `[t` | normal | Next / previous TODO comment |
-| `<leader>st` / `<leader>sT` | normal | All TODOs / TODO-FIX-FIXME picker |
-| `<leader>un` | normal | Notification history |
-| `<leader>tc` | normal | Toggle sticky function/class context at the top |
-| `<leader>?` | normal | Buffer-local which-key view |
-
-Blink completion never preselects or auto-inserts an item:
-
-| Mapping | Action |
-| --- | --- |
-| `<C-Space>` | Show completion or toggle documentation |
-| `<C-n>` / `<C-p>` | Select next / previous item, otherwise fall back |
-| `<Tab>` / `<S-Tab>` | Select item, jump snippet forward/backward, or fall back |
-| `<CR>` | Explicitly accept the selected completion; otherwise normal Enter |
-| `<C-e>` | Cancel completion |
-| `<C-b>` / `<C-f>` | Scroll documentation up / down |
-
-The same completion navigation works on the command line. In `:` and `@`, the
-first Enter accepts a visible suggestion and the next Enter executes.
-
-For the language manifest, plugin architecture, maintenance commands,
-formatting/lint policy, large-file behavior, and instructions for adding a
-language, read the [Neovim guide](nvim/README.md).
-
-## Make it yours
-
-### Colors and themes
-
-- Edit both palettes in `sketchybar/colors.sh`.
-- Change Ghostty's pair in `ghostty/config.ghostty`.
-- Change Neovim's dark/light schemes in
-  `nvim/lua/plugins/colorscheme.lua`.
-- Match border colors in `yabai/yabairc` and
-  `borders/bordersrc`.
-
-Keep the dark and light names aligned if you want `Ctrl Alt Cmd T` to switch
-everything together.
-
-### Layout and spacing
-
-Edit `yabai/yabairc`:
-
-- `split_ratio` controls the initial 50/50 split;
-- `top_padding`, `bottom_padding`, `left_padding`, and `right_padding` control
-  the outer gap;
-- `window_gap` controls space between tiled windows;
-- `external_bar all:46:0` reserves room for SketchyBar;
-- the `rule --add` lines decide which applications float.
-
-Edit `sketchybar/sketchybarrc` to change bar height, margin, offset,
-corner radius, blur, fonts, widget order, or update rates.
-
-### Shortcuts
-
-All global bindings are in `skhd/skhdrc`. Change the left side of a
-binding while leaving its command intact. skhd hotloads changes; if it does not,
-run:
+After pulling updates, rebuild helpers and reload the bar:
 
 ```sh
-skhd --reload
+git pull --ff-only
+./setup.sh --skip-packages
+sketchybar --reload
 ```
 
-On non-US keyboard layouts, the `0x21`, `0x1E`, and `0x33` keycodes for `[`,
-`]`, and Backspace may need adjustment. Run `skhd -o` to observe keycodes.
-
-### Bar applications
-
-- Add application overrides in `sketchybar/plugins/icon_map.sh`.
-- Remove or replace the AmneziaVPN popup row if you use another VPN.
-- Remove the media item if you do not want `nowplaying-cli`.
-- System telemetry uses standard macOS tools and does not send data anywhere.
-
-### Neovim languages
-
-`nvim/lua/config/languages.lua` is the source of truth for LSP servers,
-formatters, linters, Treesitter parsers, debuggers, test adapters, and Mason
-tools. Change one language definition there instead of maintaining duplicate
-lists across plugins.
-
-## Troubleshooting
+If Yabai/skhd configs changed, use the explicit `--start-services` option too.
+The installer reports where any old configs were backed up. To undo a linked
+install, stop the services, move the new config symlinks aside, and restore the
+matching backup directories. Do not move a live `~/.config` checkout wholesale.
 
 | Symptom | Check |
 | --- | --- |
-| Hotkeys do nothing | Accessibility permission for skhd; Secure Keyboard Entry must be off |
-| Windows do not tile | Accessibility permission for Yabai; restart with `yabai --restart-service` |
-| Space move/create fails | Scripting addition, partial SIP setup, and current sudoers hash |
-| Bar is missing | Run `sketchybar` in a terminal and inspect the first script error |
-| Space numbers are stale | Run `~/.config/yabai/scripts/sync_space_roles.sh` and `sketchybar --reload` |
-| App icons are boxes | Install JetBrainsMono Nerd Font and bundled Rice App Icons, then log out/in |
-| Space shortcuts report a missing helper | Run `sh ~/.config/sketchybar/helpers/build.sh` |
-| Media island never appears | Install `nowplaying-cli` and start playing supported system media |
-| Theme is out of sync | Press `Ctrl Alt Cmd T` once, wait a second, then reload SketchyBar |
-| Neovim tool is missing | Run `:ConfigHealth`, `:MasonToolsInstall`, and `:checkhealth` |
+| Hotkeys do nothing | skhd Accessibility permission; Secure Keyboard Entry and shortcut conflicts |
+| Windows do not tile | Yabai Accessibility permission; restart Yabai after granting it |
+| Space create/delete/move fails | macOS/Yabai compatibility, scripting addition, SIP, current sudoers hash |
+| Missing native helper | Run `./setup.sh --skip-packages` |
+| App icons are boxes | Install the bundled Rice App Icons and JetBrainsMono Nerd Font; log out/in if necessary |
+| Theme is out of sync | Reload SketchyBar, then run `~/.config/sketchybar/helpers/native_theme --sync` |
+| Bar missing or stale | Run `./setup.sh --doctor`; inspect SketchyBar/helper logs |
+| Neovim tooling missing | `:ConfigHealth`, `:MasonToolsInstall`, `:checkhealth`; check language runtimes |
 
-Useful logs:
+Layout spacing lives in [yabai/yabairc](yabai/yabairc); bar fonts, widgets, and
+geometry live in [sketchybar/sketchybarrc](sketchybar/sketchybarrc). App glyph
+overrides are in [icon_map.sh](sketchybar/plugins/icon_map.sh). The native helper
+architecture and local log locations are documented [here](sketchybar/helpers/README.md).
+
+### Checks
+
+The installer suite uses temporary roots and fake service commands. The default
+helper suite performs read-only checks; tests that change the desktop are opt-in.
 
 ```sh
-tail -f /tmp/yabai_$USER.err.log
-tail -f /tmp/skhd_$USER.err.log
+bash -n setup.sh
+python3 -m unittest discover -s tests -p '*_test.py'
+python3 -m unittest discover -s sketchybar/helpers/tests -p '*_test.py'
 ```
 
-## Repository layout
+Build the helpers before running their tests. Do not enable
+`RICE_THEME_LIVE_TESTS` during normal checks: that suite deliberately switches
+the running desktop through every theme.
 
-```text
-.
-├── borders
-├── ghostty
-├── nvim
-├── sketchybar
-├── skhd
-├── yabai
-├── screenshots
-├── Brewfile
-├── LICENSE
-└── README.md
-```
+## Credits and licenses
 
-Machine-only files—OAuth data, logs, backups, Yabai Space UUID state, the Ghostty
-theme override, native helper binaries and sudoers hashes—are intentionally
-excluded.
+Built on [Yabai and skhd](https://github.com/asmvik),
+[SketchyBar and JankyBorders](https://github.com/FelixKratz),
+[Ghostty](https://github.com/ghostty-org/ghostty), [Neovim](https://neovim.io/),
+and the plugin authors represented in [lazy-lock.json](nvim/lazy-lock.json).
 
-## Acknowledgements
-
-Built on the excellent work of
-[Yabai and skhd](https://github.com/asmvik),
-[FelixKratz's SketchyBar and JankyBorders](https://github.com/FelixKratz),
-[Ghostty](https://github.com/ghostty-org/ghostty),
-[Neovim](https://neovim.io/), and the plugin authors listed in
-`nvim/lazy-lock.json`.
-
-Configuration is released under the [MIT License](LICENSE). Native helpers and
-the vendored SketchyBar IPC header are GPL-3.0; see their
-[license](sketchybar/helpers/vendor/LICENSE). The upstream icon font is
-CC0-1.0; see its [license](sketchybar/fonts/LICENSE).
+Configuration: [MIT](LICENSE). Native helpers and the vendored SketchyBar IPC
+header: [GPL-3.0](sketchybar/helpers/vendor/LICENSE). The bundled app-icon font
+is derived from [sketchybar-app-font](https://github.com/kvndrsslr/sketchybar-app-font):
+[CC0-1.0](sketchybar/fonts/LICENSE).

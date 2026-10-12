@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 
+. "$HOME/.config/sketchybar/colors.sh"
+
 options=(
   style=round
   width=1.0
   hidpi=on
-  active_color=0xff89b4fa
+  active_color="$BLUE"
   inactive_color=0x00000000
 )
 

@@ -29,7 +29,9 @@ local function finalize_system_theme_change()
   -- finished. Refreshing here prevents lualine from retaining the old palette.
   local has_lualine, lualine = pcall(require, "lualine")
   if has_lualine then
-    lualine.setup()
+    local options = lualine.get_config()
+    options.options.theme = "auto"
+    lualine.setup(options)
   end
 
   apply_editor_highlights()
@@ -38,6 +40,11 @@ local function finalize_system_theme_change()
 end
 
 local function system_background()
+  local theme_file = ("/tmp/sketchybar_theme_mode_%d"):format(vim.uv.getuid())
+  local ok, lines = pcall(vim.fn.readfile, theme_file, "", 1)
+  if ok and (lines[1] == "dark" or lines[1] == "light") then
+    return lines[1]
+  end
   local result = vim
     .system({ "defaults", "read", "-g", "AppleInterfaceStyle" }, { text = true })
     :wait()
@@ -48,11 +55,29 @@ local function system_background()
 end
 
 local function apply_system_theme()
-  local colorscheme = system_background() == "dark" and "nordfox" or "xcodelight"
-  if vim.g.colors_name ~= colorscheme then
-    vim.cmd.colorscheme(colorscheme)
+  local mode = system_background()
+  local colorscheme = mode == "dark" and "nordfox" or "xcodelight"
+  local ok, lines = pcall(vim.fn.readfile, ("/tmp/rice_theme_%d.json"):format(vim.uv.getuid()))
+  if ok then
+    local decoded, state = pcall(vim.json.decode, table.concat(lines, "\n"))
+    if decoded and type(state) == "table" and type(state.neovim) == "string"
+      and state.neovim:match("^[a-z0-9_%-]+$") and state.mode == mode then
+      colorscheme = state.neovim
+    end
   end
-  finalize_system_theme_change()
+  -- Some plugins report a family name rather than the requested variant.
+  local reported = colorscheme:match("^rose%-pine") and "rose-pine"
+    or colorscheme:match("^kanagawa") and "kanagawa" or colorscheme
+  if vim.g.colors_name ~= reported or vim.g.rice_requested_theme ~= colorscheme or vim.o.background ~= mode then
+    vim.o.background = mode
+    local applied, err = pcall(vim.cmd.colorscheme, colorscheme)
+    if not applied then
+      vim.notify("Theme unavailable: " .. colorscheme .. ". Run :Lazy install.\n" .. err, vim.log.levels.WARN)
+      return
+    end
+    vim.g.rice_requested_theme = colorscheme
+    finalize_system_theme_change()
+  end
 end
 
 return {
@@ -62,6 +87,18 @@ return {
     priority = 1000,
     dependencies = {
       "lunacookies/vim-colors-xcode",
+      { "folke/tokyonight.nvim", opts = { style = "night", transparent = true,
+        styles = { sidebars = "transparent", floats = "transparent" } } },
+      { "catppuccin/nvim", name = "catppuccin", opts = { transparent_background = true } },
+      { "ellisonleao/gruvbox.nvim", opts = { transparent_mode = true } },
+      { "rebelot/kanagawa.nvim", opts = { transparent = true } },
+      { "rose-pine/neovim", name = "rose-pine", opts = { styles = { transparency = true } } },
+      { "projekt0n/github-nvim-theme", main = "github-theme", opts = { options = { transparent = true } } },
+      { "sainnhe/everforest", init = function()
+        vim.g.everforest_background = "medium"
+        vim.g.everforest_transparent_background = 2
+        vim.g.everforest_enable_italic = 1
+      end },
     },
     config = function()
       require("nightfox").setup({

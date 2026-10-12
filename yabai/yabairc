@@ -66,13 +66,9 @@ yabai -m rule --add app="Calculator" manage=off
 yabai -m rule --add app="Archive Utility" manage=off
 yabai -m rule --add app="Disk Utility" manage=off
 yabai -m rule --add label=float_amnezia_vpn app="AmneziaVPN" manage=off
+yabai -m rule --add label=float_rice_panel app="^RicePanel$" manage=off
 yabai -m rule --add app="Finder" title="(Copy|Move|Connect|Info)" manage=off
 yabai -m rule --add title="Picture in Picture" manage=off
 
-# Crisp rounded Catppuccin borders
-borders \
-  style=round \
-  width=1.0 \
-  hidpi=on \
-  active_color=0xff89b4fa \
-  inactive_color=0x00000000 &
+# Same selected palette on startup and during live theme changes.
+/bin/bash "$HOME/.config/borders/bordersrc" &

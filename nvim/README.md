@@ -6,7 +6,9 @@ project-local tools, and deliberately avoids dashboards, animation, smooth
 scrolling, rounded borders, and overlapping subsystems.
 
 `<leader>` and `<localleader>` are both `Space`. JetBrainsMono Nerd Font is the
-expected font; Catppuccin Mocha and single-line borders are used throughout.
+expected font. The native desktop theme picker controls the colorscheme, with
+Nordfox / Xcode Light as first-run defaults. Transparent editor backgrounds
+let Ghostty's selected palette show through; floating windows use single-line borders.
 
 ## Architecture
 
@@ -32,7 +34,7 @@ lua/config/
   health.lua                 configuration-specific health checks
   dap/                       shared DAP setup plus Python, Go, and Node adapters
 lua/plugins/
-  colorscheme.lua            Nordfox / Xcode Light with Ghostty sync
+  colorscheme.lua            desktop theme catalog, transparency, and live sync
   completion.lua             blink.cmp
   debugging.lua              nvim-dap, DAP UI, and virtual text
   editor.lua                 Snacks, mini, Trouble, and TODO comments

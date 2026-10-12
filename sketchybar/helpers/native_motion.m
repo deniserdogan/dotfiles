@@ -5,7 +5,8 @@
 #include <spawn.h>
 #include <stdbool.h>
 #include <string.h>
-#include "vendor/sketchybar.h"
+#include "native_ipc.h"
+#include "space_layout.h"
 
 extern char **environ;
 static char port_name[] = "com.denis.sketchybar.native_motion";
@@ -13,7 +14,10 @@ static NSString *config_directory;
 static const char *config_dir;
 static pid_t bar_pid;
 static char hovered[128];
+static double hover_leave_deadline;
 static NSMutableSet<NSString *> *selected;
+static NSMutableDictionary<NSString *, NSDictionary *> *spacePlans;
+static NSString *expanded;
 static bool topology_busy;
 static double topology_started;
 static uint32_t bg, strong, border, blue, text, active_text, subtext;
@@ -45,8 +49,18 @@ static bool space_item(const char *name) {
   return !*end && value > 0;
 }
 
+static NSString *space_owner(const char *name) {
+  if (space_item(name)) return @(name);
+  NSString *item = @(name);
+  if ([item hasPrefix:@"space_app."] || [item hasPrefix:@"space_more."]) {
+    NSArray *parts = [item componentsSeparatedByString:@"."];
+    if (parts.count >= 2) return [@"space." stringByAppendingString:parts[1]];
+  }
+  return nil;
+}
+
 static bool interactive(const char *name) {
-  if (space_item(name) || !strncmp(name, "cc.", 3)) return true;
+  if (space_owner(name) || !strncmp(name, "cc.", 3)) return true;
   const char *items[] = {"apple", "front_app", "media", "cpu", "memory",
                         "network", "volume", "battery", "clock", NULL};
   for (int i = 0; items[i]; ++i) if (!strcmp(name, items[i])) return true;
@@ -61,7 +75,8 @@ static bool strong_item(const char *name) {
 }
 
 static uint32_t base_color(const char *name) {
-  if (space_item(name) && [selected containsObject:[NSString stringWithUTF8String:name]]) return blue;
+  NSString *owner = space_owner(name);
+  if (owner && [selected containsObject:owner]) return blue;
   return strong_item(name) ? strong : bg;
 }
 
@@ -88,23 +103,78 @@ static uint32_t highlight(uint32_t base) {
 static void fill_command(char *command, size_t size, const char *name, bool enter) {
   uint32_t fill = base_color(name);
   if (enter) fill = highlight(fill);
+  NSString *owner = space_owner(name);
+  if (owner) {
+    snprintf(command, size, "--set %s background.color=0x%08x", rice_space_group_name(owner).UTF8String, fill);
+    return;
+  }
+  int outline = !strncmp(name, "cc.", 3) || !strncmp(name, "space_", 6) ? 0 : 1;
   snprintf(command, size,
-           "--set %s background.color=0x%08x background.height=28 "
+           "--set %s background.color=0x%08x "
            "icon.y_offset=0 label.y_offset=0 background.border_width=%d "
            "background.shadow.drawing=off",
-           name, fill, !strncmp(name, "cc.", 3) ? 0 : 1);
+           name, fill, outline);
+}
+
+static NSString *hex(uint32_t value) { return [NSString stringWithFormat:@"0x%08x", value]; }
+
+static void append_group(NSMutableArray *args, NSString *owner, BOOL open) {
+  NSDictionary *plan = owner ? spacePlans[owner] : nil;
+  if (!plan || [plan[@"appCount"] integerValue] <= 1) return;
+  NSString *sid = [owner substringFromIndex:6];
+  BOOL active = [selected containsObject:owner];
+  uint32_t tint = active ? active_text : text;
+  for (NSUInteger i = 1; i < [plan[@"apps"] count]; i++) {
+    NSString *child = [NSString stringWithFormat:@"space_app.%@.%lu", sid, i];
+    BOOL visible = rice_space_child_visible(i, open);
+    rice_space_child_layout(args, child, i, open);
+    [args addObjectsFromArray:@[@"--set", child,
+      [@"icon.color=" stringByAppendingString:hex(visible ? tint : 0)]]];
+  }
+  NSString *badgeName = [@"space_more." stringByAppendingString:sid];
+  BOOL badge = rice_space_overflow([plan[@"appCount"] integerValue], open) > 0;
+  rice_space_badge_layout(args, badgeName, [plan[@"appCount"] integerValue], open);
+  [args addObjectsFromArray:@[@"--set", badgeName,
+    [@"label.color=" stringByAppendingString:hex(badge ? (active ? active_text : subtext) : 0)]]];
+}
+
+static void expand_space(NSString *owner) {
+  if ([owner isEqual:expanded]) return;
+  NSMutableArray *args = [NSMutableArray arrayWithArray:@[@"--animate", @"sin", @"7"]];
+  if (expanded) append_group(args, expanded, NO);
+  expanded = owner && [spacePlans[owner][@"appCount"] integerValue] > 1 ? owner : nil;
+  if (expanded) append_group(args, expanded, YES);
+  if (args.count > 3) rice_bar(args);
 }
 
 static void hover(const char *name, const char *sender) {
   char command[1400], previous[550] = "", next[550] = "";
   if (!strcmp(sender, "mouse.entered")) {
-    if (!interactive(name) || !strcmp(name, hovered)) return;
-    if (*hovered) fill_command(previous, sizeof(previous), hovered, false);
+    if (!interactive(name)) return;
+    hover_leave_deadline = 0;
+    if (!strcmp(name, hovered)) return;
+    char old[sizeof(hovered)];
+    snprintf(old, sizeof(old), "%s", hovered);
     snprintf(hovered, sizeof(hovered), "%s", name);
+    expand_space(space_owner(name));
+    if (*old && ![space_owner(old) isEqual:space_owner(name)]) fill_command(previous, sizeof(previous), old, false);
     fill_command(next, sizeof(next), name, true);
   } else {
+    BOOL global = !strcmp(sender, "mouse.exited.global");
+    if (global) hover_leave_deadline = 0;
     // An old exit event must never cancel the newer hovered item.
-    if (!*hovered || (strcmp(sender, "mouse.exited.global") && strcmp(name, hovered))) return;
+    if (!*hovered) {
+      if (global) expand_space(nil);
+      return;
+    }
+    if (!global && strcmp(name, hovered)) return;
+    // Sibling logo windows report separate exits/entries. Give the next entry
+    // 30 ms to arrive; a genuine pill exit still collapses without a global exit.
+    if (!global && space_owner(hovered)) {
+      hover_leave_deadline = NSProcessInfo.processInfo.systemUptime + 0.030;
+      return;
+    }
+    expand_space(nil);
     fill_command(previous, sizeof(previous), hovered, false);
     *hovered = '\0';
   }
@@ -113,6 +183,43 @@ static void hover(const char *name, const char *sender) {
   snprintf(command, sizeof(command), "--animate sin 5 %s%s%s", previous,
            *previous && *next ? " " : "", next);
   sketchybar(command);
+}
+
+static void apply_theme(env event) {
+  palette(event);
+#define C(key) @(env_get_value_for_key(event, key))
+  NSMutableArray *args = [NSMutableArray arrayWithArray:@[@"--animate", @"sin", @"8",
+    @"--bar", [@"color=" stringByAppendingString:C("BAR_COLOR")], [@"border_color=" stringByAppendingString:C("BAR_BORDER")],
+    @"--default", [@"icon.color=" stringByAppendingString:hex(text)], [@"label.color=" stringByAppendingString:hex(text)],
+    [@"background.color=" stringByAppendingString:hex(bg)], [@"background.border_color=" stringByAppendingString:hex(border)]]];
+  for (NSString *name in @[@"apple", @"front_app", @"media", @"cpu", @"memory", @"network", @"volume", @"battery", @"clock"]) {
+    uint32_t fill = strong_item(name.UTF8String) ? strong : bg;
+    if (!strcmp(name.UTF8String, hovered)) fill = highlight(fill);
+    [args addObjectsFromArray:@[@"--set", name, [@"background.color=" stringByAppendingString:hex(fill)],
+      [@"background.border_color=" stringByAppendingString:hex(border)],
+      [@"icon.color=" stringByAppendingString:hex(text)], [@"label.color=" stringByAppendingString:hex(text)]]];
+  }
+  NSDictionary *accents = @{@"apple":C("MAUVE"), @"media":C("MAUVE"), @"clock":C("MAUVE"),
+    @"cpu":C("GREEN"), @"memory":C("YELLOW"), @"network":C("TEAL"), @"volume":C("BLUE"), @"battery":C("GREEN")};
+  for (NSString *name in accents) [args addObjectsFromArray:@[@"--set", name, [@"icon.color=" stringByAppendingString:accents[name]]]];
+  for (NSString *name in @[@"front_app"])
+    [args addObjectsFromArray:@[@"--set", name, [@"label.color=" stringByAppendingString:hex(subtext)]]];
+  [args addObjectsFromArray:@[@"--set", @"media", [@"background.border_color=" stringByAppendingString:C("MAUVE")],
+    @"--set", @"cpu", [@"graph.color=" stringByAppendingString:C("GREEN")], [@"graph.fill_color=" stringByAppendingString:C("GREEN_FILL")]]];
+  for (NSString *owner in spacePlans) {
+    BOOL active = [selected containsObject:owner];
+    uint32_t fill = active ? blue : bg;
+    if ([space_owner(hovered) isEqual:owner]) fill = highlight(fill);
+    [args addObjectsFromArray:@[@"--set", rice_space_group_name(owner),
+      [@"background.color=" stringByAppendingString:hex(fill)],
+      [@"background.border_color=" stringByAppendingString:hex(active ? blue : border)],
+      @"--set", owner,
+      [@"icon.color=" stringByAppendingString:hex(active ? active_text : text)],
+      [@"label.color=" stringByAppendingString:hex(active ? active_text : subtext)]]];
+    append_group(args, owner, [owner isEqual:expanded]);
+  }
+  rice_bar(args);
+#undef C
 }
 
 static void select_space(const char *name, env event) {
@@ -127,15 +234,14 @@ static void select_space(const char *name, env event) {
   // events must not restart their colour animations or flood the bar with IPC.
   if (active == previous) return;
   uint32_t fill = base_color(name);
-  if (!strcmp(name, hovered)) fill = highlight(fill);
-  char command[700];
-  snprintf(command, sizeof(command),
-           "--animate sin 5 --set %s background.color=0x%08x "
-           "background.border_color=0x%08x icon.color=0x%08x label.color=0x%08x",
-           name, fill, active ? blue : border,
-           active ? active_text : text,
-           active ? active_text : subtext);
-  sketchybar(command);
+  if ([space_owner(hovered) isEqual:item]) fill = highlight(fill);
+  NSMutableArray *args = [NSMutableArray arrayWithArray:@[@"--animate", @"sin", @"5",
+    @"--set", rice_space_group_name(item), [@"background.color=" stringByAppendingString:hex(fill)],
+    [@"background.border_color=" stringByAppendingString:hex(active ? blue : border)],
+    @"--set", item, [@"icon.color=" stringByAppendingString:hex(active ? active_text : text)],
+    [@"label.color=" stringByAppendingString:hex(active ? active_text : subtext)]]];
+  append_group(args, item, [item isEqual:expanded]);
+  rice_bar(args);
 }
 
 static const char *plugin_for(const char *name) {
@@ -166,7 +272,7 @@ static void update_widget(const char *name, env event) {
     key = value + strlen(value) + 1;
   }
   values[@"CONFIG_DIR"] = @(config_dir);
-  // Plugin colors.sh reads the live committed/pending theme, not the helper's
+  // Plugin colors.sh reads the live committed theme, not the helper's
   // launch-time environment, which could otherwise restore the old palette.
   [values removeObjectForKey:@"THEME_MODE"];
   char **environment = calloc(values.count + 1, sizeof(char *));
@@ -215,6 +321,24 @@ MACH_HANDLER(on_event) {
   @autoreleasepool {
     const char *sender = env_get_value_for_key(env, "SENDER");
     const char *name = env_get_value_for_key(env, "NAME");
+    if (!strcmp(sender, "mouse.clicked") && !strcmp(name, "apple")) {
+      rice_post("com.denis.sketchybar.native_panel", @{@"SENDER":@"--toggle"}); return;
+    }
+    if (!strcmp(sender, "native_theme_palette")) { apply_theme(env); return; }
+    if (!strcmp(sender, "native_space_plan")) {
+      NSData *data = [@(env_get_value_for_key(env, "INFO")) dataUsingEncoding:NSUTF8StringEncoding];
+      NSArray *plan = [NSJSONSerialization JSONObjectWithData:data options:0 error:NULL];
+      if (![plan isKindOfClass:NSArray.class]) return;
+      [spacePlans removeAllObjects];
+      [selected removeAllObjects];
+      expanded = nil;
+      for (NSDictionary *row in plan) {
+        NSString *owner = [@"space." stringByAppendingString:[row[@"id"] description]];
+        spacePlans[owner] = row;
+        if ([row[@"visible"] boolValue]) [selected addObject:owner];
+      }
+      return;
+    }
     if (!strcmp(name, "hover_observer") && !strcmp(sender, "space_change")) {
       hover("", "mouse.exited.global");
       return;
@@ -227,7 +351,10 @@ MACH_HANDLER(on_event) {
         if (g_mach_port) mach_port_deallocate(mach_task_self(), g_mach_port);
         g_mach_port = MACH_PORT_NULL;
         *hovered = '\0';
+        hover_leave_deadline = 0;
         [selected removeAllObjects];
+        [spacePlans removeAllObjects];
+        expanded = nil;
         topology_busy = false;
         bar_pid = pid;
       }
@@ -246,6 +373,7 @@ MACH_HANDLER(on_event) {
     }
     if (!strcmp(sender, "native_palette_changed")) {
       palette(env);
+      hover_leave_deadline = 0;
       if (*hovered) {
         char command[600], item[128];
         snprintf(item, sizeof(item), "%s", hovered);
@@ -296,12 +424,44 @@ static bool register_port(void) {
 }
 #pragma clang diagnostic pop
 
+static void receive_event(struct mach_buffer *buffer) {
+  // Sleep in Mach until an event or the pending leave deadline, not a polling
+  // timer. Normal operation retains the one-second daemon lifecycle check.
+  mach_msg_timeout_t timeout = 1000;
+  if (hover_leave_deadline) {
+    double remaining = (hover_leave_deadline - NSProcessInfo.processInfo.systemUptime) * 1000;
+    timeout = (mach_msg_timeout_t)MAX(1, MIN(1000, (int)(remaining + 1)));
+  }
+  *buffer = (struct mach_buffer){0};
+  mach_msg_return_t result = mach_msg(&buffer->message.header,
+    MACH_RCV_MSG | MACH_RCV_TIMEOUT, 0, sizeof(*buffer),
+    g_mach_server.port, timeout, MACH_PORT_NULL);
+  if (result != MACH_MSG_SUCCESS) buffer->message.descriptor.address = NULL;
+}
+
 int main(int argc, char **argv) {
   const char *config = getenv("CONFIG_DIR");
   config_directory = config && *config ? [NSString stringWithUTF8String:config]
                    : [NSHomeDirectory() stringByAppendingPathComponent:@".config/sketchybar"];
   config_dir = config_directory.UTF8String;
   selected = [NSMutableSet set];
+  spacePlans = [NSMutableDictionary dictionary];
+  if (argc == 2 && !strcmp(argv[1], "--plan-expansion")) {
+    @autoreleasepool {
+      NSDictionary *fixture = [NSJSONSerialization JSONObjectWithData:
+        [NSFileHandle.fileHandleWithStandardInput readDataToEndOfFile] options:0 error:NULL];
+      NSDictionary *row = fixture[@"space"];
+      if (![row[@"id"] isKindOfClass:NSNumber.class] || ![row[@"apps"] isKindOfClass:NSArray.class]) return 2;
+      NSString *owner = [@"space." stringByAppendingString:[row[@"id"] description]];
+      spacePlans[owner] = row;
+      if ([row[@"visible"] boolValue]) [selected addObject:owner];
+      palette(NULL);
+      NSMutableArray *args = [NSMutableArray array];
+      append_group(args, owner, [fixture[@"open"] boolValue]);
+      NSData *data = [NSJSONSerialization dataWithJSONObject:args options:0 error:NULL];
+      fwrite(data.bytes, 1, data.length, stdout); return 0;
+    }
+  }
   if (argc > 1 && !strcmp(argv[1], "--ready")) return lookup() ? 0 : 1;
   if (argc < 3 || strcmp(argv[1], "--ensure")) return 2;
   bar_pid = (pid_t)strtol(argv[2], NULL, 10);
@@ -352,18 +512,21 @@ int main(int argc, char **argv) {
   fprintf(stderr, "Native motion ready for SketchyBar PID %d\n", bar_pid);
   for (;;) {
     struct mach_buffer buffer;
-    mach_receive_message(g_mach_server.port, &buffer, true);
+    receive_event(&buffer);
     if (buffer.message.descriptor.address) {
       // SketchyBar sends a two-byte "k" control packet during reload/exit.
       // Reuse this helper on reload, but never parse that packet as an env.
       if (buffer.message.descriptor.size == 2 &&
           *(char *)buffer.message.descriptor.address == 'k') {
         *hovered = '\0';
+        hover_leave_deadline = 0;
       } else {
         on_event((env)buffer.message.descriptor.address);
       }
       mach_msg_destroy(&buffer.message.header);
     }
+    if (hover_leave_deadline && NSProcessInfo.processInfo.systemUptime >= hover_leave_deadline)
+      hover("", "mouse.exited.global");
     if (kill(bar_pid, 0) != 0) break;
     // A killed controller must not leave selection updates paused forever.
     if (topology_busy && [NSDate timeIntervalSinceReferenceDate] - topology_started > 2.0) {

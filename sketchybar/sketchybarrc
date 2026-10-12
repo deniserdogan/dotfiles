@@ -2,11 +2,10 @@
 
 PLUGIN_DIR="$CONFIG_DIR/plugins"
 
-# On a cold start, initialize from macOS itself. Live theme switches pass a
-# pending target through colors.sh and do not restart this process.
+# On a cold start, initialize from macOS itself. The native appearance observer
+# handles subsequent switches without restarting this process.
 user_id="${UID:-$(/usr/bin/id -u)}"
-pending_file="/tmp/sketchybar_theme_pending_$user_id"
-if [ -z "${THEME_MODE:-}" ] && [ ! -r "$pending_file" ]; then
+if [ -z "${THEME_MODE:-}" ]; then
   if [ "$(/usr/bin/defaults read -g AppleInterfaceStyle 2>/dev/null)" = "Dark" ]; then
     THEME_MODE=dark
   else
@@ -83,20 +82,9 @@ sketchybar --add item apple left \
     padding_left=3 \
     padding_right=3 \
     background.color="$ITEM_BG_STRONG" \
-    popup.align=left \
-    popup.height=38 \
-    popup.y_offset=7 \
-    popup.blur_radius=16 \
-    popup.background.color="$BAR_COLOR" \
-    popup.background.border_color="$BAR_BORDER" \
-    popup.background.border_width=1 \
-    popup.background.corner_radius=14 \
-    popup.background.padding_left=6 \
-    popup.background.padding_right=6 \
-    popup.background.shadow.drawing=off \
     script="$PLUGIN_DIR/interactive.sh" \
     click_script="$PLUGIN_DIR/control_center.sh"
-sketchybar --subscribe apple mouse.entered mouse.exited
+sketchybar --subscribe apple mouse.entered mouse.exited mouse.clicked
 
 # Keep the launcher visually separate from the connected Space pills.
 sketchybar --add item apple_spacer left \
@@ -108,224 +96,7 @@ sketchybar --add item apple_spacer left \
     label.drawing=off \
     background.drawing=off
 
-# A compact command panel with information not already visible in the bar.
-sketchybar --add item cc.header popup.apple \
-  --set cc.header \
-    width=252 \
-    padding_left=0 \
-    padding_right=0 \
-    icon="" \
-    icon.font="$ICON_FONT:Semibold:16.0" \
-    icon.color="$MAUVE" \
-    icon.width=38 \
-    icon.align=center \
-    icon.padding_left=0 \
-    icon.padding_right=0 \
-    label="This Mac" \
-    label.width=214 \
-    label.align=left \
-    label.padding_left=5 \
-    label.padding_right=0 \
-    label.font="$TEXT_FONT:Bold:13.0" \
-    background.color="$ITEM_BG_STRONG" \
-    background.border_width=0 \
-    background.height=28 \
-    background.corner_radius=10
-
-sketchybar --add item cc.system popup.apple \
-  --set cc.system \
-    width=252 \
-    padding_left=0 \
-    padding_right=0 \
-    icon="󰀵" \
-    icon.color="$BLUE" \
-    icon.width=38 \
-    icon.align=center \
-    icon.padding_left=0 \
-    icon.padding_right=0 \
-    label="macOS  --" \
-    label.width=214 \
-    label.align=left \
-    label.padding_left=5 \
-    label.padding_right=0 \
-    label.color="$SUBTEXT" \
-    background.color="$ITEM_BG" \
-    background.border_width=0 \
-    background.height=28 \
-    background.corner_radius=9
-
-sketchybar --add item cc.storage popup.apple \
-  --set cc.storage \
-    width=252 \
-    padding_left=0 \
-    padding_right=0 \
-    icon="󰋊" \
-    icon.color="$PEACH" \
-    icon.width=38 \
-    icon.align=center \
-    icon.padding_left=0 \
-    icon.padding_right=0 \
-    label="Storage  --" \
-    label.width=214 \
-    label.align=left \
-    label.padding_left=5 \
-    label.padding_right=0 \
-    label.color="$SUBTEXT" \
-    background.color="$ITEM_BG" \
-    background.border_width=0 \
-    background.height=28 \
-    background.corner_radius=9
-
-sketchybar --add item cc.display popup.apple \
-  --set cc.display \
-    width=252 \
-    padding_left=0 \
-    padding_right=0 \
-    icon="󰍹" \
-    icon.color="$TEAL" \
-    icon.width=38 \
-    icon.align=center \
-    icon.padding_left=0 \
-    icon.padding_right=0 \
-    label="Display  --" \
-    label.width=214 \
-    label.align=left \
-    label.padding_left=5 \
-    label.padding_right=0 \
-    label.color="$SUBTEXT" \
-    background.color="$ITEM_BG" \
-    background.border_width=0 \
-    background.height=28 \
-    background.corner_radius=9
-
-sketchybar --add item cc.vpn popup.apple \
-  --set cc.vpn \
-    width=252 \
-    padding_left=0 \
-    padding_right=0 \
-    icon=":amnezia_vpn:" \
-    icon.font="$APP_FONT:Regular:15.0" \
-    icon.color="$BLUE" \
-    icon.width=38 \
-    icon.align=center \
-    icon.padding_left=0 \
-    icon.padding_right=0 \
-    label="AmneziaVPN  --" \
-    label.width=214 \
-    label.align=left \
-    label.padding_left=5 \
-    label.padding_right=0 \
-    label.color="$SUBTEXT" \
-    background.color="$ITEM_BG" \
-    background.border_width=0 \
-    background.height=28 \
-    background.corner_radius=9 \
-    click_script="$PLUGIN_DIR/control_center.sh close; open -a \"AmneziaVPN\""
-
-sketchybar --add item cc.actions_label popup.apple \
-  --set cc.actions_label \
-    width=259 \
-    padding_left=0 \
-    padding_right=0 \
-    icon.drawing=off \
-    icon.width=0 \
-    label="QUICK ACTIONS" \
-    label.width=259 \
-    label.align=left \
-    label.padding_left=11 \
-    label.padding_right=0 \
-    label.font="$TEXT_FONT:Bold:10.0" \
-    label.color="$MUTED" \
-    background.drawing=off \
-    background.border_width=0
-
-sketchybar --add item cc.settings popup.apple \
-  --set cc.settings \
-    width=252 \
-    padding_left=0 \
-    padding_right=0 \
-    icon="󰒓" \
-    icon.color="$MAUVE" \
-    icon.width=38 \
-    icon.align=center \
-    icon.padding_left=0 \
-    icon.padding_right=0 \
-    label="System Settings" \
-    label.width=214 \
-    label.align=left \
-    label.padding_left=5 \
-    label.padding_right=0 \
-    background.color="$ITEM_BG_STRONG" \
-    background.border_width=0 \
-    background.height=28 \
-    background.corner_radius=9 \
-    click_script="$PLUGIN_DIR/control_center.sh close; open -a \"System Settings\""
-
-sketchybar --add item cc.appearance popup.apple \
-  --set cc.appearance \
-    width=252 \
-    padding_left=0 \
-    padding_right=0 \
-    icon="󰔎" \
-    icon.color="$BLUE" \
-    icon.width=38 \
-    icon.align=center \
-    icon.padding_left=0 \
-    icon.padding_right=0 \
-    label="Switch Appearance" \
-    label.width=214 \
-    label.align=left \
-    label.padding_left=5 \
-    label.padding_right=0 \
-    background.color="$ITEM_BG_STRONG" \
-    background.border_width=0 \
-    background.height=28 \
-    background.corner_radius=9 \
-    click_script="\"$PLUGIN_DIR/control_center.sh\" close; \"$HOME/.config/skhd/scripts/toggle_theme.sh\""
-
-sketchybar --add item cc.sleep popup.apple \
-  --set cc.sleep \
-    width=252 \
-    padding_left=0 \
-    padding_right=0 \
-    icon="󰒲" \
-    icon.color="$YELLOW" \
-    icon.width=38 \
-    icon.align=center \
-    icon.padding_left=0 \
-    icon.padding_right=0 \
-    label="Sleep Display" \
-    label.width=214 \
-    label.align=left \
-    label.padding_left=5 \
-    label.padding_right=0 \
-    background.color="$ITEM_BG_STRONG" \
-    background.border_width=0 \
-    background.height=28 \
-    background.corner_radius=9 \
-    click_script="$PLUGIN_DIR/control_center.sh close; pmset displaysleepnow"
-
-# Keep every card evenly inset from all popup edges.
-sketchybar --set "/cc\\..*/" \
-  width=259 \
-  background.padding_left=4 \
-  background.padding_right=4 \
-  icon.width=46 \
-  label.width=213 \
-  label.padding_left=1 \
-  --set cc.actions_label \
-    icon.width=0 \
-    label.width=259 \
-    label.padding_left=11 \
-    background.padding_left=0 \
-    background.padding_right=0
-
-# Popup cards react to the pointer without changing their layout.
-for item in cc.header cc.system cc.storage cc.display cc.vpn \
-  cc.settings cc.appearance cc.sleep; do
-  sketchybar --set "$item" script="$PLUGIN_DIR/interactive.sh"
-  sketchybar --subscribe "$item" mouse.entered mouse.exited
-done
+# The Apple button opens the native AppKit control center over Mach IPC.
 
 # Stable-ID Space pills are committed together after native events are ready.
 
@@ -363,12 +134,13 @@ sketchybar --add event native_palette_changed
 sketchybar --add event native_hover_test
 sketchybar --add event native_topology_begin
 sketchybar --add event native_topology_end
+sketchybar --add event native_space_plan
 sketchybar --add item hover_observer left \
   --set hover_observer \
     drawing=off \
     updates=on \
     script="$PLUGIN_DIR/interactive.sh" \
-  --subscribe hover_observer mouse.exited.global space_change native_palette_changed native_hover_test native_topology_begin native_topology_end
+  --subscribe hover_observer mouse.exited.global space_change native_palette_changed native_hover_test native_topology_begin native_topology_end native_space_plan
 
 sketchybar --add item front_app left \
   --set front_app \
@@ -476,11 +248,12 @@ if [ -n "$NATIVE_MOTION_PORT" ]; then
   # Data updates are dispatched by the helper only when needed. Hover and
   # selected-Space feedback execute directly over Mach IPC with no forks.
   set -- --set '/space\.[0-9][0-9]*/' script="" mach_helper="$NATIVE_MOTION_PORT" \
-    --set '/cc\..*/' script="" mach_helper="$NATIVE_MOTION_PORT"
+    --set apple click_script=""
   for item in apple hover_observer front_app media cpu memory network volume battery clock; do
     set -- "$@" --set "$item" script="" mach_helper="$NATIVE_MOTION_PORT"
   done
   sketchybar "$@"
+  sketchybar --set theme_observer script="" mach_helper="com.denis.sketchybar.native_theme"
 fi
 
 /bin/sh "$HOME/.config/yabai/scripts/sync_space_items.sh" --force
