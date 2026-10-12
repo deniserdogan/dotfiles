@@ -23,6 +23,12 @@ static void check(BOOL condition, NSString *message) {
   }
 }
 
+static BOOL containsLabel(NSView *view, NSString *text) {
+  if ([view isKindOfClass:NSTextField.class] && [((NSTextField *)view).stringValue containsString:text]) return YES;
+  for (NSView *child in view.subviews) if (containsLabel(child, text)) return YES;
+  return NO;
+}
+
 static void key(RiceController *controller, unsigned short code) {
   NSEvent *event = [NSEvent keyEventWithType:NSEventTypeKeyDown location:NSZeroPoint
     modifierFlags:0 timestamp:0 windowNumber:0 context:nil characters:@""
@@ -147,6 +153,8 @@ int main(void) {
     [controller applyWallpaper:[NSURL fileURLWithPath:@"/private/tmp/not-in-library.png"]];
     check([controller.galleryStatus.stringValue hasPrefix:@"Cannot open"], @"Out-of-library wallpapers cannot be applied");
     [controller show:@"terminal"];
+    check(containsLabel(controller.root, @"Opacity and font size update live") && !containsLabel(controller.root, @"restart"),
+      @"Terminal controls explain live updates without an obsolete restart warning");
     check(controller.sections.segmentCount == 4 && controller.sections.selectedSegment == 3 && !controller.cards.count,
       @"Terminal settings have a dedicated native customization section");
     check(controller.opacitySlider.continuous && controller.fontSizeSlider.continuous &&

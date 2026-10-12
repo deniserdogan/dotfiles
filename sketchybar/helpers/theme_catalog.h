@@ -74,6 +74,25 @@ static inline NSDictionary *rice_theme_palette(NSDictionary *theme) {
   return palette;
 }
 
+// One native style for startup and live appearance commits. Keep the gradient
+// close to the theme's primary accent, with no glow or terminal background fill.
+static inline NSArray<NSString *> *rice_border_arguments(NSDictionary *theme, BOOL includeGeometry) {
+  if (!theme) return nil;
+  NSDictionary *palette = rice_theme_palette(theme);
+  NSString *blue = [palette[@"BLUE"] substringFromIndex:4];
+  NSString *mauve = [palette[@"MAUVE"] substringFromIndex:4];
+  NSString *foreground = [palette[@"TEXT"] substringFromIndex:4];
+  NSString *gradient = [NSString stringWithFormat:@"active_color=gradient(top_left=%@,bottom_right=%@)",
+    rice_argb(blue, 0xff), rice_argb(rice_mix(blue, mauve, .40), 0xee)];
+  NSString *inactive = [@"inactive_color=" stringByAppendingString:
+    rice_argb(foreground, [theme[@"mode"] isEqual:@"dark"] ? 0x24 : 0x1c)];
+  NSArray *colors = @[gradient, inactive];
+  // Even an unchanged hidpi option makes JankyBorders recreate all overlays.
+  // Appearance commits send only colours, leaving native window geometry alone.
+  return includeGeometry ? [@[@"style=round", @"width=2.0", @"hidpi=on", @"background_color=0x00000000"]
+    arrayByAddingObjectsFromArray:colors] : colors;
+}
+
 static inline NSString *rice_selection_path(NSString *directory) {
   // Persistent choices must live outside SketchyBar's hotload-watched tree.
   return [[directory stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"rice/theme-selection.json"];

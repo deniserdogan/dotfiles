@@ -16,8 +16,8 @@ Logs are in `/tmp/sketchybar_native_motion_<uid>.log`.
 The launcher opens a native AppKit control center. Choose **Personalize your
 desktop** for the theme, wallpaper, launcher-logo galleries, and **Terminal**
 opacity/font-size sliders. Terminal settings live in the ignored `rice/ghostty.conf`
-override, and reload signals are coalesced while dragging. Ghostty's macOS opacity
-restart limitation is explained in the panel; sessions are never closed.
+override, and reload signals are coalesced while dragging. Opacity and font size
+update live; sessions are never closed.
 Personal images
 live in `~/.config/rice/wallpapers/` and `~/.config/rice/logos/`; the app creates
 these folders automatically. Folder changes refresh the gallery without
@@ -25,6 +25,10 @@ reloading SketchyBar. Wallpaper selection applies to all Spaces and displays.
 **Light** and **Dark** assign the two images of a native appearance-aware HEIC;
 the gallery opens on the current appearance so new selections update its default.
 macOS owns the transition, with no theme-change polling or service restarts.
+The theme coordinator also updates JankyBorders in place. Startup and live
+changes share `rice_border_arguments`: rounded Retina outlines, a restrained
+theme-accent gradient for focus, quiet inactive edges, and no glow/background fill.
+`native_theme --border-args THEME_ID` prints the same options without applying them.
 **Static** uses one image for both appearances. Original artwork is never resized
 or overwritten. HEIC encoding runs on a separate queue so the gallery stays live.
 

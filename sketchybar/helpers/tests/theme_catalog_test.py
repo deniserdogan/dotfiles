@@ -46,6 +46,46 @@ class ThemeCatalogTests(unittest.TestCase):
                 for value in palette.values():
                     self.assertRegex(value, r"^0x[0-9a-fA-F]{8}$")
 
+    def test_borders_follow_every_theme_without_glow_or_fill(self):
+        styles = set()
+        for row in CATALOG:
+            with self.subTest(theme=row["id"]):
+                palette = json.loads(subprocess.check_output([THEME, "--plan", row["id"]]))
+                arguments = subprocess.check_output([THEME, "--border-args", row["id"]], text=True).splitlines()
+                options = dict(argument.split("=", 1) for argument in arguments)
+                self.assertEqual(set(options), {"style", "width", "hidpi", "background_color", "active_color", "inactive_color"})
+                self.assertEqual(options["style"], "round")
+                self.assertEqual(options["width"], "2.0")
+                self.assertEqual(options["hidpi"], "on")
+                self.assertEqual(options["background_color"], "0x00000000")
+                blue, mauve = int(palette["BLUE"][4:], 16), int(palette["MAUVE"][4:], 16)
+                mixed = sum(int(((blue >> shift) & 255)*.60 + ((mauve >> shift) & 255)*.40) << shift
+                            for shift in (0, 8, 16))
+                self.assertEqual(options["active_color"],
+                                 f"gradient(top_left=0xff{blue:06x},bottom_right=0xee{mixed:06x})")
+                alpha = "24" if row["mode"] == "dark" else "1c"
+                self.assertEqual(options["inactive_color"], f"0x{alpha}{palette['TEXT'][4:]}")
+                styles.add(options["active_color"])
+        self.assertEqual(len(styles), len(CATALOG))
+        self.assertEqual(subprocess.run([THEME, "--border-args", "unknown-theme"], capture_output=True).returncode, 2)
+
+    def test_border_startup_matches_live_options(self):
+        # The borders executable is replaced by a fixture: no daemon is contacted.
+        with tempfile.TemporaryDirectory(prefix="rice-border-test-", dir="/private/tmp") as temporary:
+            home = Path(temporary)
+            (home / ".config").symlink_to(ROOT, target_is_directory=True)
+            binary = home / "bin"
+            binary.mkdir()
+            mock = binary / "borders"
+            mock.write_text("#!/usr/bin/env python3\nimport json, sys\nprint(json.dumps(sys.argv[1:]))\n")
+            mock.chmod(0o755)
+            for mode in ("dark", "light"):
+                expected = subprocess.check_output([THEME, "--border-args", mode], text=True).splitlines()
+                actual = subprocess.check_output(["/bin/bash", ROOT / "borders/bordersrc"], text=True,
+                    env={**os.environ, "HOME": str(home), "THEME_MODE": mode,
+                         "PATH": f"{binary}:{os.environ['PATH']}"})
+                self.assertEqual(json.loads(actual), expected)
+
     @unittest.skipUnless(GHOSTTY.is_dir(), "Ghostty resources unavailable")
     def test_every_terminal_theme_is_installed(self):
         for row in CATALOG:

@@ -10,6 +10,14 @@ int main(int argc, char **argv) {
     if (argc != 3) return 2;
     NSArray *catalog = rice_themes(@(argv[1]));
     check(catalog != nil, @"Catalog loads");
+    for (NSDictionary *theme in catalog) {
+      NSArray *startup = rice_border_arguments(theme, YES);
+      NSArray *live = rice_border_arguments(theme, NO);
+      check(live.count == 2 && [live[0] hasPrefix:@"active_color="] && [live[1] hasPrefix:@"inactive_color="],
+        @"Live border updates change only colours, never recreating overlays for HiDPI");
+      check([[startup subarrayWithRange:NSMakeRange(startup.count-2, 2)] isEqual:live],
+        @"Startup and live border colours are identical for every theme");
+    }
     NSString *fixture = @(argv[2]);
     NSString *directory = [fixture stringByAppendingPathComponent:@"sketchybar"];
     NSMutableDictionary *selection = rice_theme_selection(directory, catalog);

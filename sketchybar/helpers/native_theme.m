@@ -95,7 +95,7 @@ static void sync_theme(BOOL force) {
   if (processes("borders", 0)) {
     NSTask *task = [NSTask new];
     task.executableURL = [NSURL fileURLWithPath:@"/opt/homebrew/bin/borders"];
-    task.arguments = @[[ @"active_color=" stringByAppendingString:palette[@"BLUE"]], @"inactive_color=0x00000000"];
+    task.arguments = rice_border_arguments(theme, NO);
     task.standardOutput = NSFileHandle.fileHandleWithNullDevice;
     task.standardError = NSFileHandle.fileHandleWithNullDevice;
     [task launchAndReturnError:NULL];
@@ -151,10 +151,14 @@ int main(int argc, char **argv) {
       NSData *data = [NSJSONSerialization dataWithJSONObject:catalog options:NSJSONWritingPrettyPrinted error:NULL];
       fwrite(data.bytes, 1, data.length, stdout); return 0;
     }
-    if (argc == 3 && !strcmp(argv[1], "--plan")) {
+    if (argc == 3 && (!strcmp(argv[1], "--plan") || !strcmp(argv[1], "--border-args"))) {
       NSString *identifier = @(argv[2]);
       NSDictionary *theme = rice_theme(catalog, selection[identifier] ?: identifier);
       if (!theme) return 2;
+      if (!strcmp(argv[1], "--border-args")) {
+        for (NSString *argument in rice_border_arguments(theme, YES)) puts(argument.UTF8String);
+        return 0;
+      }
       NSData *data = [NSJSONSerialization dataWithJSONObject:rice_theme_palette(theme) options:0 error:NULL];
       fwrite(data.bytes, 1, data.length, stdout); return 0;
     }

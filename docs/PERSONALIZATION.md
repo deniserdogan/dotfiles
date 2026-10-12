@@ -16,6 +16,10 @@ The gallery remembers one light and one dark theme. `Ctrl + Left Option + Cmd + 
 switches between those selections. Changes made through macOS Appearance settings
 use the same coordinator; no terminal restart is needed.
 
+Window borders follow the selected palette: a crisp, rounded 2 pt focus outline
+with a subtle accent gradient, and a quieter neutral outline on inactive windows.
+JankyBorders updates in place, without glow, background fill, or service restarts.
+
 **All** groups dark themes first, then light themes, preserving the order within
 each group. **Dark** and **Light** filter the gallery without changing appearance.
 Each chosen theme is saved immediately for its own appearance, independently
@@ -45,10 +49,8 @@ The **Terminal** section provides native sliders for Ghostty's background opacit
 to the private `rice/ghostty.conf` override and survive theme changes. Defaults
 are 90% opacity and 17 pt. Neovim's transparent background follows the terminal.
 
-Font-size changes reload without closing sessions. Manually zoomed tabs retain
-their zoom; `Cmd + 0` resets it. Ghostty on macOS can require a full restart for
-opacity changes; the panel never quits it automatically. Native fullscreen
-remains opaque. [Ghostty configuration reference](https://ghostty.org/docs/config/reference)
+Opacity and font-size changes update live without closing sessions. Manually
+zoomed tabs retain their zoom; `Cmd + 0` resets it. Native fullscreen remains opaque.
 
 ## Wallpapers & launcher artwork
 

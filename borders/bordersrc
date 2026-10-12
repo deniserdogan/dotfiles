@@ -2,12 +2,17 @@
 
 . "$HOME/.config/sketchybar/colors.sh"
 
-options=(
-  style=round
-  width=1.0
-  hidpi=on
-  active_color="$BLUE"
-  inactive_color=0x00000000
-)
+options=()
+theme_helper="$HOME/.config/sketchybar/helpers/native_theme"
+if [ -x "$theme_helper" ]; then
+  while IFS= read -r option; do
+    options+=("$option")
+  done < <("$theme_helper" --border-args "${THEME_ID:-$THEME_MODE}")
+fi
+# A fresh checkout still gets a clean outline before the helpers are built.
+if [ "${#options[@]}" -eq 0 ]; then
+  options=(style=round width=2.0 hidpi=on background_color=0x00000000
+    active_color="$BLUE" inactive_color=0x00000000)
+fi
 
-borders "${options[@]}"
+exec borders "${options[@]}"

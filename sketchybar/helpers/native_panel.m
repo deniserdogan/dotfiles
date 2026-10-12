@@ -406,7 +406,7 @@ static RiceActionLayout rice_action_layout(NSRect bounds, BOOL preview, BOOL sub
   [self label:@"8 pt" frame:NSMakeRect(42, 396, 300, 16) size:10 weight:NSFontWeightRegular secondary:YES];
   NSTextField *large = [self label:@"40 pt" frame:NSMakeRect(542, 396, 150, 16) size:10 weight:NSFontWeightRegular secondary:YES];
   large.alignment = NSTextAlignmentRight;
-  NSTextField *note = [NSTextField wrappingLabelWithString:@"Saved automatically on this Mac. Font size reloads in place; manually zoomed tabs keep their zoom (⌘0 resets it). Ghostty may require a restart for opacity changes, and native fullscreen is always opaque."];
+  NSTextField *note = [NSTextField wrappingLabelWithString:@"Opacity and font size update live and save automatically on this Mac. Manually zoomed tabs keep their zoom (⌘0 resets it). Native fullscreen remains opaque."];
   note.frame = NSMakeRect(32, 453, 680, 66); note.font = [NSFont systemFontOfSize:11];
   note.textColor = NSColor.secondaryLabelColor; [self.root addSubview:note];
   // The same panel works on short external displays without clipping controls.
@@ -448,7 +448,7 @@ static RiceActionLayout rice_action_layout(NSRect bounds, BOOL preview, BOOL sub
   BOOL saved = rice_ghostty_save_settings(directory, self.ghosttyOpacity, self.ghosttyFontSize, &error);
   BOOL reloaded = saved && !self.snapshot && rice_ghostty_reload();
   if ([self.page isEqual:@"terminal"]) self.galleryStatus.stringValue = saved ?
-    reloaded ? @"Saved · Font reloaded · Opacity may need a Ghostty restart" : @"Saved · Applies when Ghostty opens" :
+    reloaded ? @"Saved · Terminal appearance updated" : @"Saved · Applies when Ghostty opens" :
     error.localizedDescription ?: @"Could not save terminal settings.";
 }
 - (void)buildGallery {
