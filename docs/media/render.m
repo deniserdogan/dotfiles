@@ -1,5 +1,6 @@
 // GPL-3.0. Documentation artwork from the real AppKit views, not a UI mockup.
-// No application delegate, IPC, screen capture, live telemetry or user assets.
+// No application delegate, IPC, screen capture or live telemetry.
+// The desktop plate uses only the explicitly supplied documentation capture.
 #define main rice_panel_application_main
 #include "../../sketchybar/helpers/native_panel.m"
 #undef main
@@ -95,6 +96,32 @@ static BOOL plate(NSString *path, NSSize size, BOOL light, void (^draw)(void)) {
   return [[rep representationUsingType:NSBitmapImageFileTypePNG properties:@{}] writeToFile:path atomically:YES];
 }
 
+static BOOL desktop_plate(NSString *source, NSString *output) {
+  NSImage *image = [[NSImage alloc] initWithContentsOfFile:source];
+  if (!image.isValid) { fputs("Missing or invalid documentation desktop capture\n", stderr); return NO; }
+  NSImageRep *pixels = image.representations.firstObject;
+  CGFloat width = pixels.pixelsWide / 2.0, height = pixels.pixelsHigh / 2.0;
+  if (width <= 0 || height <= 0) return NO;
+  // The 2x plate uses the original capture at 1:1 pixel resolution. No crop,
+  // font substitution, retouching or synthesized editor/browser content.
+  return plate(output, NSMakeSize(width+112, height+246), NO, ^{
+    text(@"THE DESKTOP / NEOVIM", NSMakeRect(56, 30, width, 20), 11, NSFontWeightSemibold, @"9aabc6");
+    text(@"Built around your workflow.", NSMakeRect(54, 62, width, 65), 46, NSFontWeightBold, @"f4f6fb");
+    text(@"SketchyBar · Ghostty · Neovim", NSMakeRect(56, 132, width, 28), 18, NSFontWeightRegular, @"b5c1d7");
+    NSRect rect = NSMakeRect(56, 190, width, height);
+    // Reuse the same native shadow and frame as the panel showcases.
+    artwork(nil, rect, NO);
+    [NSGraphicsContext saveGraphicsState];
+    [[NSBezierPath bezierPathWithRoundedRect:rect xRadius:20 yRadius:20] addClip];
+    [NSGraphicsContext currentContext].imageInterpolation = NSImageInterpolationNone;
+    [image drawInRect:rect fromRect:NSZeroRect operation:NSCompositingOperationSourceOver fraction:1 respectFlipped:YES hints:nil];
+    [NSGraphicsContext restoreGraphicsState];
+    NSBezierPath *outline = [NSBezierPath bezierPathWithRoundedRect:NSInsetRect(rect, .5, .5) xRadius:20 yRadius:20];
+    [[NSColor.whiteColor colorWithAlphaComponent:.12] setStroke]; outline.lineWidth = 1; [outline stroke];
+    text(@"Actual desktop capture · Explorer, Python LSP & completion", NSMakeRect(56, height+207, width, 20), 11, NSFontWeightRegular, @"9aabc6");
+  });
+}
+
 int main(int argc, char **argv) {
   @autoreleasepool {
     if (argc != 3) { fputs("Usage: render <checkout> <output-directory>\n", stderr); return 2; }
@@ -108,7 +135,9 @@ int main(int argc, char **argv) {
     NSImage *darkControl = panel(catalog, @"tokyo-night", @"control", 0);
     NSImage *lightGallery = panel(catalog, @"catppuccin-latte", @"themes", 2);
     NSString *output = @(argv[2]);
-    BOOL ok = plate([output stringByAppendingPathComponent:@"overview.png"], NSMakeSize(1400, 1040), NO, ^{
+    BOOL ok = desktop_plate([@(argv[1]) stringByAppendingPathComponent:@"docs/media/desktop-source.png"],
+      [output stringByAppendingPathComponent:@"desktop.png"]);
+    ok &= plate([output stringByAppendingPathComponent:@"overview.png"], NSMakeSize(1400, 1040), NO, ^{
       text(@"DOTFILES / MACOS", NSMakeRect(64, 45, 600, 20), 12, NSFontWeightSemibold, @"9aabc6");
       text(@"Make room for your workflow.", NSMakeRect(62, 84, 1260, 68), 48, NSFontWeightBold, @"f4f6fb");
       text(@"Keyboard-first tiling. Coordinated themes. Native desktop controls.", NSMakeRect(64, 163, 1260, 30), 19, NSFontWeightRegular, @"b5c1d7");
@@ -136,7 +165,7 @@ int main(int argc, char **argv) {
       text(@"Actual AppKit view · Sample system data", NSMakeRect(616, 755, 440, 22), 11, NSFontWeightRegular, @"9aabc6");
     });
     if (!ok) return 1;
-    puts("Rendered overview.png, themes-light.png and control-center.png with public sample data.");
+    puts("Rendered desktop.png from the supplied capture; panel showcases use public sample data.");
   }
   return 0;
 }

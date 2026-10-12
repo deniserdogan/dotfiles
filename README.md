@@ -10,7 +10,10 @@ Yabai tiling · SketchyBar · AppKit controls · Ghostty · Neovim
 
 </div>
 
-![Native theme gallery and control center in Tokyo Night](screenshots/overview.png)
+![Actual desktop with SketchyBar, Ghostty and Neovim showing Python LSP completion](screenshots/desktop.png)
+
+<sub>Actual desktop capture, framed for presentation. Explorer, Python LSP,
+completion, and live system telemetry—all from the running setup.</sub>
 
 An integrated macOS setup for people who live between an editor, a terminal,
 and a browser. Keep your hands on the keyboard, your Spaces organized, and
@@ -61,9 +64,17 @@ out of Git. Fresh installations use the standard Apple launcher.
 
 [Theme list, wallpapers, and custom logos →](docs/PERSONALIZATION.md)
 
-<sub>Showcase images render the actual AppKit views with sample system data and
-an opaque documentation backdrop. In-app palette thumbnails are illustrative,
-not desktop captures. No personal wallpapers or custom logos are included.
+<details>
+<summary>View the dark theme gallery and control center together</summary>
+
+![Native theme gallery and control center in Tokyo Night](screenshots/overview.png)
+
+</details>
+
+<sub>The panel showcases render actual AppKit views with sample system data and
+an opaque documentation backdrop. Their palette thumbnails are illustrative;
+the desktop image above is a real capture. Personal artwork visible in that
+capture is not distributed as separate wallpaper or logo assets.
 [Reproduce the visuals](docs/media/README.md).</sub>
 
 ## Get started
